@@ -1,0 +1,156 @@
+VICE APP — BUILD PROGRESS
+Last updated: 2026-05-07
+Current phase: Phase 5 wired — pending real-device validation
+
+═══════════════════════════════════════
+PHASE 0 — PROJECT BOOTSTRAP
+═══════════════════════════════════════
+[x] Create Expo project (TypeScript template) — SDK 54 (gameplan said 52, used latest stable)
+[x] Install all npm packages
+[x] Configure metro.config.js (NativeWind)
+[x] Configure babel.config.js (react-native-worklets/plugin — Reanimated 4 replaced reanimated/plugin)
+[x] Configure tailwind.config.js (Vice design tokens; pinned tailwindcss to v3 for NativeWind compat)
+[x] Create global.css and import in _layout.tsx
+[x] Create full directory structure with barrel index.ts files (stubbed — populate as modules land)
+[x] types/index.ts — all TypeScript interfaces (added 'custom' ViceId for Phase 2 free-text)
+[x] constants/colors.ts — all design tokens
+[x] constants/vices.ts — 12 vice categories
+[x] constants/config.ts — Supabase URL, env refs, sensor + spring tunables
+[x] Expo bundles without errors (verified via `npx expo export --platform android`, 17/17 expo-doctor checks pass)
+[x] README.md created
+[x] progress.txt created
+
+═══════════════════════════════════════
+PHASE 1 — PURE MATH UTILITIES
+═══════════════════════════════════════
+[x] lib/bearing.ts — bearingBetween()
+[x] lib/bearing.ts — distanceBetween()
+[x] lib/bearing.ts — shortestAngle()
+[x] lib/bearing.ts — bearingToCardinal()
+[x] lib/bearing.ts — formatDistance()
+[x] lib/compassFilter.ts — tiltCompensatedHeading()
+[x] lib/compassFilter.ts — CompassFilter class
+[x] Unit tests pass for shortestAngle edge cases (27 inline assertions, all green via tsx)
+[x] store/index.ts — Zustand store with persist (partialize: recents+units+filters only)
+
+═══════════════════════════════════════
+PHASE 2 — COMPASS CORE
+═══════════════════════════════════════
+[x] components/compass/ViceNeedle.tsx — subtle variant
+[x] components/compass/ViceNeedle.tsx — medium variant
+[x] components/compass/ViceNeedle.tsx — overt variant
+[x] components/compass/CompassDial.tsx — ticks + cardinals
+[x] components/compass/CompassRose.tsx — combined animated
+[x] hooks/useCompass.ts — sensor subscriptions
+[x] hooks/useCompass.ts — complementary filter wired
+[x] hooks/useCompass.ts — Reanimated sharedValue
+[x] hooks/useCompass.ts — withSpring needle animation
+[x] VALIDATED ON REAL DEVICE: needle tracks physical rotation (Android)
+[x] VALIDATED: 180° spin is smooth and responsive
+[x] VALIDATED: no sensor subscription leaks on unmount
+
+DELTAS FROM GAMEPLAN:
+- Magnetometer formula corrected from atan2(-Yh, Xh) to atan2(-Xh, Yh).
+  Verified against Android sensor data (mag.y ≈ +24 when top→N).
+- ViceNeedle replaced with user-supplied gold V (1254x1254 viewBox), pre-
+  rotated 180° via <G> so apex faces UP at rotation=0 → apex points at target.
+- CompassRose now also rotates the dial: targetBearing's cardinal label
+  springs to the top of the screen. Same NEEDLE_SPRING config.
+
+NOTE: app/index.tsx is still the Phase 2 device-test screen with sensor
+debug panel. Phase 3 replaces it with the real Splash.
+
+═══════════════════════════════════════
+PHASE 3 — SCREEN SCAFFOLDING
+═══════════════════════════════════════
+[x] app/_layout.tsx — GestureHandlerRootView + Stack + Inter font load (4 weights) + splash hold
+[x] app/index.tsx — Splash screen (radial-gradient backdrop via SVG, ViceNeedle 148, Begin pill)
+[x] app/search.tsx — Search tab (input, recent list)
+[x] app/search.tsx — Categories tab (2-col grid)
+[x] app/loading.tsx — Loading screen with pulse animation (two staggered Reanimated rings)
+[x] app/loading.tsx — Phase text animation (4 phases, 480ms each)
+[x] Navigation flow: Splash → Search → Loading → Compass stub
+[x] Screen transitions working correctly (verified via metro bundle, 4.14 MB hbc)
+[x] Custom free-text vice search: SearchInput.onSubmit creates ad-hoc Vice with id='custom'
+
+═══════════════════════════════════════
+PHASE 4 — PLACES INTEGRATION
+═══════════════════════════════════════
+[x] supabase/functions/places-proxy/index.ts — deployed (v1, ACTIVE, verify_jwt=true)
+[x] GOOGLE_PLACES_API_KEY set in Supabase secrets (smoke test returned real NYC results)
+[x] lib/placesApi.ts — nearbySearch()
+[x] lib/placesApi.ts — placeDetails()
+[x] lib/supabase.ts — supabase-js client (AsyncStorage + url-polyfill)
+[x] hooks/useLocation.ts — permission request + GPS watch
+[x] hooks/usePlaces.ts — fetch + bearing/distance compute
+[x] hooks/usePlaces.ts — sort by distance + store in Zustand
+[x] Loading screen triggers fetch + navigates on completion (denied/empty/error → /search)
+[ ] Real places verified at real GPS location
+
+DELTAS FROM GAMEPLAN:
+- Edge function uses Places API (New) v1. searchText is preferred when a
+  query string is present (better for "boba tea bubble tea" style queries
+  that don't map cleanly to a single place type); falls back to searchNearby
+  with includedTypes when only placeTypes is supplied.
+- Per-IP rate limit (30 req/min) added in the function. In-memory bucket —
+  catches casual abuse, not a hard guarantee given edge function instance
+  recycling.
+- Added `lib/supabase.ts` (client) — separate from the placesApi module so the
+  client is reusable for Phase 7 auth.
+- Added `react-native-url-polyfill` (supabase-js requires URL on RN).
+- tsconfig.json now excludes supabase/functions/** (Deno globals would
+  otherwise fail strict typecheck).
+- .env.local holds EXPO_PUBLIC_SUPABASE_URL + ANON_KEY (already in
+  .gitignore via .env*.local).
+- Loading screen run-once guard with startedRef prevents double-fetch under
+  StrictMode/remounts.
+
+PROJECT REFS:
+- Supabase project_ref: wuxdtsoihfcrtuxorzfz
+- Project URL: https://wuxdtsoihfcrtuxorzfz.supabase.co
+- Function URL: https://wuxdtsoihfcrtuxorzfz.supabase.co/functions/v1/places-proxy
+
+═══════════════════════════════════════
+PHASE 5 — COMPASS SCREEN ASSEMBLY
+═══════════════════════════════════════
+[x] app/compass.tsx — top bar (vice label + menu button)
+[x] app/compass.tsx — CompassRose wired to useCompass(targetBearing)
+[x] app/compass.tsx — status block (Heading to / name / dist · cardinal · °)
+[x] components/sheets/NearbySheet.tsx — place list + active gold-dot indicator
+[x] components/sheets/PlaceDetailSheet.tsx — stats + lazy hours fetch + buttons
+[x] "Navigate" button opens Maps app via Linking.openURL (apple maps on iOS, google maps URL on android)
+[x] Tap compass / Heading-to block → PlaceDetailSheet opens
+[x] Tap hamburger → NearbySheet opens
+[x] Pick place in NearbySheet → setTargetPlace → compass retargets, sheet dismisses
+[ ] End-to-end flow: pick vice → fetch → compass points correctly (real device)
+
+DELTAS FROM GAMEPLAN:
+- BottomSheetModalProvider added to app/_layout.tsx (required by @gorhom/bottom-sheet v5).
+- PlaceDetailSheet fetches /places/{id} on first open via lib/placesApi.placeDetails
+  to populate hours/website/phone (the list endpoint doesn't return those fields).
+- NearbySheet uses BottomSheetFlatList for virtualization since up to 20 results.
+- Active target shown as a gold dot (COLORS.gold) next to the row.
+- Maps deep-link is platform-branched: maps.apple.com on iOS, google.com/maps/dir
+  with destination_place_id on Android.
+
+═══════════════════════════════════════
+PHASE 6 — POLISH
+═══════════════════════════════════════
+[x] Inter font loaded via expo-font (all 4 weights) — done in _layout.tsx
+[x] Splash screen waits for font load — done (returns null until fontsLoaded)
+[x] Location permission request flow (denied state handled) — useLocation + Loading screen
+[ ] Magnetometer calibration detection + user prompt
+[x] Empty state: no places found for vice — Loading screen no_places step
+[x] Error state: network error with retry button — Loading screen error step + Retry
+[x] Haptic feedback on vice selection — light impact in app/search.tsx pick()
+[x] Haptic feedback on place tap in NearbySheet — selectionAsync in handlePick
+[x] Favorite button (♡) renders disabled with "Soon" hint — PlaceDetailSheet header
+
+═══════════════════════════════════════
+PHASE 2 FEATURES (FUTURE)
+═══════════════════════════════════════
+[ ] Supabase Auth setup
+[ ] User account creation + sign-in screen
+[ ] Favorites persistence (supabase DB)
+[ ] Custom vice free-text search
+[ ] Filters sheet (radius, open now, brands)
