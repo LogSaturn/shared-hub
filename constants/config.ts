@@ -4,7 +4,6 @@ export const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? ''
 export const PLACES_PROXY_FN = 'places-proxy';
 
 export const DEFAULT_SEARCH_RADIUS_M = 1600;
-export const MAX_SEARCH_RADIUS_M = 16000;
 
 export const COMPASS_FILTER_ALPHA = 0.98;
 export const SENSOR_INTERVAL_MAG_MS = 32;

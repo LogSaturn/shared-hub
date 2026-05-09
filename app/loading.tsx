@@ -51,6 +51,10 @@ export default function Loading() {
   const [step, setStep] = useState<Step>('idle');
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [placesCount, setPlacesCount] = useState<number | null>(null);
+  // Bumped by the Retry button to force the run() effect to re-fire. We can't
+  // rely on router.replace('/loading') from inside /loading — same-href replace
+  // is a no-op in expo-router and the effect won't re-run.
+  const [attempt, setAttempt] = useState(0);
 
   const { request: requestLocation } = useLocation();
   const { fetch: fetchPlaces } = usePlaces();
@@ -188,7 +192,7 @@ export default function Loading() {
       clearTimeout(hardTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedVice]);
+  }, [selectedVice, attempt]);
 
   const ringStyleA = useAnimatedStyle(() => ({
     opacity: 1 - ringA.value,
@@ -204,10 +208,11 @@ export default function Loading() {
   const onRetry = () => {
     log('retry tapped');
     startedRef.current = false;
+    mountedRef.current = true;
     setErrorDetail(null);
     setPlacesCount(null);
     setStep('idle');
-    router.replace('/loading');
+    setAttempt((a) => a + 1);
   };
 
   if (!selectedVice) return null;

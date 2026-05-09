@@ -103,8 +103,8 @@ export const PlaceDetailSheet = forwardRef<BottomSheetModal>(function PlaceDetai
   };
 
   const onClose = () => {
-    // deno-lint-ignore no-explicit-any
-    (ref as React.MutableRefObject<BottomSheetModal | null> | null)?.current?.dismiss();
+    const modalRef = ref as React.RefObject<BottomSheetModal | null> | null;
+    modalRef?.current?.dismiss();
   };
 
   return (

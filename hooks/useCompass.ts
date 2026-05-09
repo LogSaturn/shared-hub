@@ -33,7 +33,12 @@ export function useCompass(targetBearing: number): UseCompassResult {
   const dialRotation = useSharedValue(0);
   const filter = useRef(new CompassFilter(COMPASS_FILTER_ALPHA));
   const latestMag = useRef({ x: 0, y: 0, z: 0 });
-  const latestAccel = useRef({ x: 0, y: 0, z: -1 });
+  const latestAccel = useRef({ x: 0, y: 0, z: 1 });
+  // Don't run the filter until at least one real magnetometer + accelerometer
+  // sample has landed. The default seed values would yield a valid-looking
+  // but wrong heading on the first gyro tick.
+  const haveMag = useRef(false);
+  const haveAccel = useRef(false);
   const deviceHeadingRef = useRef(0);
   const targetRef = useRef(targetBearing);
 
@@ -48,13 +53,16 @@ export function useCompass(targetBearing: number): UseCompassResult {
 
     const magSub = Magnetometer.addListener(({ x, y, z }) => {
       latestMag.current = { x, y, z };
+      haveMag.current = true;
     });
 
     const accelSub = Accelerometer.addListener(({ x, y, z }) => {
       latestAccel.current = { x, y, z };
+      haveAccel.current = true;
     });
 
     const gyroSub = Gyroscope.addListener(({ z }) => {
+      if (!haveMag.current || !haveAccel.current) return;
       const magHeading = tiltCompensatedHeading(
         latestMag.current,
         latestAccel.current,
@@ -76,6 +84,8 @@ export function useCompass(targetBearing: number): UseCompassResult {
       accelSub.remove();
       gyroSub.remove();
       filter.current.reset();
+      haveMag.current = false;
+      haveAccel.current = false;
     };
   }, [needleRotation, dialRotation]);
 

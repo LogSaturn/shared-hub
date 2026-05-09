@@ -37,19 +37,4 @@ export const TYPOGRAPHY = {
   fontFamilyBold: 'Inter_700Bold',
 
   trackingWide: 2.5,
-  trackingMid: 1.8,
-  trackingTight: -0.5,
-} as const;
-
-// Single source of truth for text sizing. Use semantic roles, not raw px,
-// across screens to keep hierarchy consistent. Aligns with Material/HIG type
-// roles: caption, label, body, title, headline, display.
-export const TYPE = {
-  caption: { size: 11, lineHeight: 14, tracking: 1.8 },
-  label: { size: 12, lineHeight: 16, tracking: 2.4 },
-  body: { size: 14, lineHeight: 20, tracking: 0.2 },
-  bodyLg: { size: 16, lineHeight: 22, tracking: 0.1 },
-  title: { size: 18, lineHeight: 24, tracking: -0.2 },
-  headline: { size: 22, lineHeight: 28, tracking: -0.3 },
-  display: { size: 30, lineHeight: 36, tracking: -0.5 },
 } as const;

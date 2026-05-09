@@ -34,6 +34,12 @@ export function tiltCompensatedHeading(
 // Complementary filter. alpha=0.98 means: trust gyro 98% (responsive to fast
 // physical spins), let magnetometer correct 2% per frame (cancels gyro drift).
 // One instance per mounted compass — keep it alive across sensor ticks via useRef.
+//
+// Cap the integration step so a JS-thread stall (long task, GC pause) doesn't
+// integrate hundreds of degrees of gyro velocity in a single tick and snap
+// the needle. 100ms is ~6 frames at 60Hz — well past normal jitter.
+const MAX_DT_SEC = 0.1;
+
 export class CompassFilter {
   private heading = 0;
   private lastTs: number | null = null;
@@ -50,7 +56,7 @@ export class CompassFilter {
       return this.heading;
     }
 
-    const dt = (timestamp - this.lastTs) / 1000;
+    const dt = Math.min((timestamp - this.lastTs) / 1000, MAX_DT_SEC);
     this.lastTs = timestamp;
 
     const gyroPrediction = this.heading + gyroZ * (180 / Math.PI) * dt;

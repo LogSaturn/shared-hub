@@ -9,6 +9,12 @@
 //   { action: "details", placeId }
 
 const GOOGLE_PLACES_KEY = Deno.env.get("GOOGLE_PLACES_API_KEY") ?? "";
+// In non-prod, surface upstream Google error bodies in responses so debugging
+// is easier. In prod we strip them to avoid leaking quota state, project IDs,
+// or key prefixes back to the client.
+const DEBUG_UPSTREAM = Deno.env.get("PLACES_PROXY_DEBUG") === "1";
+
+const MAX_QUERY_LENGTH = 200;
 
 const NEARBY_FIELD_MASK = [
   "places.id",
@@ -139,10 +145,12 @@ async function handleNearby(body: {
   let url: string;
   let payload: Record<string, unknown>;
 
-  if (body.query && body.query.trim().length > 0) {
+  const trimmedQuery = body.query?.trim().slice(0, MAX_QUERY_LENGTH);
+
+  if (trimmedQuery && trimmedQuery.length > 0) {
     url = "https://places.googleapis.com/v1/places:searchText";
     payload = {
-      textQuery: body.query,
+      textQuery: trimmedQuery,
       maxResultCount,
       locationBias: {
         circle: {
@@ -180,8 +188,13 @@ async function handleNearby(body: {
 
   if (!res.ok) {
     const text = await res.text();
+    console.warn(`[places-proxy] upstream ${res.status}: ${text.slice(0, 500)}`);
     return json(
-      { error: "places_upstream_error", status: res.status, detail: text },
+      {
+        error: "places_upstream_error",
+        status: res.status,
+        ...(DEBUG_UPSTREAM ? { detail: text } : {}),
+      },
       502,
     );
   }
@@ -204,8 +217,13 @@ async function handleDetails(body: { placeId: string }) {
 
   if (!res.ok) {
     const text = await res.text();
+    console.warn(`[places-proxy] upstream ${res.status}: ${text.slice(0, 500)}`);
     return json(
-      { error: "places_upstream_error", status: res.status, detail: text },
+      {
+        error: "places_upstream_error",
+        status: res.status,
+        ...(DEBUG_UPSTREAM ? { detail: text } : {}),
+      },
       502,
     );
   }
@@ -225,10 +243,10 @@ Deno.serve(async (req) => {
     return json({ error: "missing_api_key" }, 500);
   }
 
-  const ip =
-    req.headers.get("cf-connecting-ip") ??
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    "unknown";
+  // cf-connecting-ip is set by Cloudflare (Supabase Edge Functions sit behind
+  // CF) and is not client-spoofable. Skip x-forwarded-for since clients can
+  // forge it to bypass the per-IP rate limit.
+  const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
 
   const limit = rateLimit(ip);
   if (!limit.ok) {
