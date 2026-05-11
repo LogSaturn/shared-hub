@@ -9,11 +9,11 @@
     "web": "expo start --web",
     "test": "jest",
     "typecheck": "tsc --noEmit",
-    "build:preview": "eas build --profile preview --platform android",
-    "build:preview:ios": "eas build --profile preview --platform ios",
-    "build:production": "eas build --profile production --platform all",
-    "update:preview": "eas update --branch preview",
-    "update:production": "eas update --branch production"
+    "build:preview": "npx eas-cli build --profile preview --platform android",
+    "build:preview:ios": "npx eas-cli build --profile preview --platform ios",
+    "build:production": "npx eas-cli build --profile production --platform all",
+    "update:preview": "npx eas-cli update --branch preview",
+    "update:production": "npx eas-cli update --branch production"
   },
   "jest": {
     "preset": "jest-expo",
