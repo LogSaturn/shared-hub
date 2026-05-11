@@ -40,7 +40,7 @@
       "expo-updates"
     ],
     "updates": {
-      "url": "https://u.expo.dev/f978a440-4380-4b9a-8aa2-e970d17b31fd"
+      "url": "https://u.expo.dev/07f1038b-528c-4d19-b078-3418f3732620"
     },
     "runtimeVersion": {
       "policy": "appVersion"
@@ -48,7 +48,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "f978a440-4380-4b9a-8aa2-e970d17b31fd"
+        "projectId": "07f1038b-528c-4d19-b078-3418f3732620"
       }
     },
     "owner": "sirhobbys-organization"
