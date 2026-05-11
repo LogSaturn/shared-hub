@@ -14,6 +14,7 @@
       "backgroundColor": "#1c1713"
     },
     "ios": {
+      "bundleIdentifier": "com.logsaturn.vice",
       "supportsTablet": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Vice uses your location to point you toward the nearest place to satisfy your vice.",
@@ -21,6 +22,7 @@
       }
     },
     "android": {
+      "package": "com.logsaturn.vice",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1c1713"
@@ -34,8 +36,15 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      "expo-updates"
     ],
+    "updates": {
+      "url": "https://u.expo.dev/f978a440-4380-4b9a-8aa2-e970d17b31fd"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "extra": {
       "router": {},
       "eas": {
