@@ -37,6 +37,7 @@ export const useAppStore = create<AppState>()(
         set((s) => ({
           recentViceIds: [id, ...s.recentViceIds.filter((r) => r !== id)].slice(0, 5),
         })),
+      setRecentViceIds: (ids) => set({ recentViceIds: ids.slice(0, 5) }),
 
       units: 'mi',
       setUnits: (units) => set({ units }),

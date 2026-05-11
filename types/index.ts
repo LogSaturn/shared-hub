@@ -75,6 +75,7 @@ export interface AppState {
 
   recentViceIds: ViceId[];
   addRecentVice: (id: ViceId) => void;
+  setRecentViceIds: (ids: ViceId[]) => void;
 
   units: Units;
   setUnits: (units: Units) => void;

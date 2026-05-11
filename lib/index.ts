@@ -2,3 +2,7 @@ export * from './bearing';
 export * from './compassFilter';
 export * from './placesApi';
 export { supabase } from './supabase';
+export * from './auth';
+export * from './profile';
+export * from './favorites';
+export * from './viceSearches';

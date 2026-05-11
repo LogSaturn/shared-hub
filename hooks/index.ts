@@ -4,3 +4,8 @@ export { usePlaces } from './usePlaces';
 export type { UsePlacesResult } from './usePlaces';
 export { useLocation } from './useLocation';
 export type { UseLocationResult } from './useLocation';
+export { useSession } from './useSession';
+export type { UseSessionResult } from './useSession';
+export { useFavorites } from './useFavorites';
+export type { UseFavoritesResult } from './useFavorites';
+export { useSessionSync } from './useSessionSync';

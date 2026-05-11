@@ -1,5 +1,6 @@
 import { forwardRef, useCallback, useEffect, useMemo, useState } from 'react';
-import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import {
   BottomSheetBackdrop,
   BottomSheetBackdropProps,
@@ -13,6 +14,8 @@ import { Label } from '../ui';
 import { useAppStore } from '../../store';
 import { placeDetails, PlaceDetails } from '../../lib/placesApi';
 import { formatDistance, bearingToCardinal } from '../../lib/bearing';
+import { useSession, useFavorites } from '../../hooks';
+import { placeToSnapshot } from '../../lib/favorites';
 
 const log = (...args: unknown[]) => console.log('[PlaceDetailSheet]', ...args);
 
@@ -32,12 +35,44 @@ export const PlaceDetailSheet = forwardRef<BottomSheetModal>(function PlaceDetai
   _props,
   ref,
 ) {
+  const router = useRouter();
   const targetPlace = useAppStore((s) => s.targetPlace);
   const units = useAppStore((s) => s.units);
+  const { session } = useSession();
+  const { isFavorited, toggle } = useFavorites();
 
   const [details, setDetails] = useState<PlaceDetails | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [detailsError, setDetailsError] = useState<string | null>(null);
+
+  const favorited = targetPlace ? isFavorited('place', targetPlace.placeId) : false;
+
+  const onToggleFavorite = async () => {
+    if (!targetPlace) return;
+    if (!session) {
+      Alert.alert(
+        'Sign in to save',
+        'Create an account to save places to your favorites.',
+        [
+          { text: 'Not now', style: 'cancel' },
+          {
+            text: 'Sign in',
+            onPress: () => {
+              const modalRef = ref as React.RefObject<BottomSheetModal | null> | null;
+              modalRef?.current?.dismiss();
+              router.push('/account');
+            },
+          },
+        ],
+      );
+      return;
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    const r = await toggle('place', targetPlace.placeId, placeToSnapshot(targetPlace));
+    if (!r.ok && r.error) {
+      Alert.alert('Could not save', r.error);
+    }
+  };
 
   const snapPoints = useMemo(() => ['62%', '92%'], []);
 
@@ -130,20 +165,23 @@ export const PlaceDetailSheet = forwardRef<BottomSheetModal>(function PlaceDetai
             ) : null}
           </View>
 
-          <View style={styles.favoriteCol}>
-            <Pressable
-              disabled
-              style={styles.favoriteBtn}
-              accessibilityLabel="Favorite (coming soon)"
-            >
-              <MaterialCommunityIcons
-                name="heart-outline"
-                size={22}
-                color={COLORS.muted32}
-              />
-            </Pressable>
-            <Text style={styles.favoriteHint}>Soon</Text>
-          </View>
+          <Pressable
+            onPress={onToggleFavorite}
+            style={({ pressed }) => [
+              styles.favoriteBtn,
+              favorited && styles.favoriteBtnActive,
+              pressed && { opacity: 0.7 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={favorited ? 'Remove from favorites' : 'Save to favorites'}
+            accessibilityState={{ selected: favorited }}
+          >
+            <MaterialCommunityIcons
+              name={favorited ? 'heart' : 'heart-outline'}
+              size={22}
+              color={favorited ? COLORS.gold : COLORS.muted70}
+            />
+          </Pressable>
         </View>
 
         <View style={styles.statsRow}>
@@ -285,26 +323,18 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 6,
   },
-  favoriteCol: {
-    alignItems: 'center',
-    gap: 4,
-  },
   favoriteBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: COLORS.muted20,
+    borderColor: COLORS.border10,
     alignItems: 'center',
     justifyContent: 'center',
-    opacity: 0.6,
   },
-  favoriteHint: {
-    color: COLORS.muted32,
-    fontFamily: TYPOGRAPHY.fontFamily,
-    fontSize: 9,
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
+  favoriteBtnActive: {
+    borderColor: COLORS.accentBorder,
+    backgroundColor: COLORS.accentDim,
   },
   name: {
     color: COLORS.fg,

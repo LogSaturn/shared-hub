@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,12 +17,35 @@ import { VICE_CATEGORIES } from '../constants/vices';
 import { Label } from '../components/ui';
 import { useAppStore } from '../store';
 import { Vice, ViceId } from '../types';
+import { logViceSearch } from '../lib/viceSearches';
+import { useFavorites, useSession } from '../hooks';
+import { viceToSnapshot } from '../lib/favorites';
 
 export default function Search() {
   const router = useRouter();
   const setSelectedVice = useAppStore((s) => s.setSelectedVice);
   const addRecentVice = useAppStore((s) => s.addRecentVice);
   const recentViceIds = useAppStore((s) => s.recentViceIds);
+  const userLocation = useAppStore((s) => s.userLocation);
+  const { session } = useSession();
+  const { isFavorited, toggle } = useFavorites();
+
+  async function onToggleViceFavorite(vice: Vice) {
+    if (!session) {
+      Alert.alert(
+        'Sign in to save',
+        'Create an account to save your favorite vices.',
+        [
+          { text: 'Not now', style: 'cancel' },
+          { text: 'Sign in', onPress: () => router.push('/account') },
+        ],
+      );
+      return;
+    }
+    Haptics.selectionAsync().catch(() => {});
+    const r = await toggle('vice', vice.id, viceToSnapshot(vice));
+    if (!r.ok && r.error) Alert.alert('Could not save', r.error);
+  }
 
   const [query, setQuery] = useState('');
   const trimmed = query.trim();
@@ -46,6 +70,14 @@ export default function Search() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     setSelectedVice(vice);
     addRecentVice(vice.id);
+    // Fire-and-forget server log; no-op for anon users.
+    logViceSearch({
+      viceId: vice.id,
+      query: vice.id === 'custom' ? vice.searchQuery : null,
+      location: userLocation
+        ? { lat: userLocation.lat, lng: userLocation.lng }
+        : null,
+    }).catch(() => {});
     router.push('/loading');
   }
 
@@ -83,7 +115,22 @@ export default function Search() {
           <Text style={styles.back}>‹ Back</Text>
         </Pressable>
         <Label>Step 01</Label>
-        <View style={{ width: 64 }} />
+        <Pressable
+          onPress={() => router.push('/account')}
+          hitSlop={16}
+          accessibilityRole="button"
+          accessibilityLabel="Account"
+          style={({ pressed }) => [
+            styles.accountBtn,
+            pressed && { opacity: 0.5 },
+          ]}
+        >
+          <MaterialCommunityIcons
+            name="account-circle-outline"
+            size={24}
+            color={COLORS.muted70}
+          />
+        </Pressable>
       </View>
 
       <ScrollView
@@ -133,7 +180,13 @@ export default function Search() {
           <View style={styles.section}>
             <Label style={styles.sectionLabel}>Recent</Label>
             {recentVices.map((v) => (
-              <ViceRow key={`recent-${v.id}`} vice={v} onPress={() => pick(v)} />
+              <ViceRow
+                key={`recent-${v.id}`}
+                vice={v}
+                favorited={isFavorited('vice', v.id)}
+                onPress={() => pick(v)}
+                onToggleFavorite={() => onToggleViceFavorite(v)}
+              />
             ))}
           </View>
         )}
@@ -173,7 +226,13 @@ export default function Search() {
             </View>
           ) : (
             filtered.map((v) => (
-              <ViceRow key={v.id} vice={v} onPress={() => pick(v)} />
+              <ViceRow
+                key={v.id}
+                vice={v}
+                favorited={isFavorited('vice', v.id)}
+                onPress={() => pick(v)}
+                onToggleFavorite={() => onToggleViceFavorite(v)}
+              />
             ))
           )}
         </View>
@@ -182,7 +241,17 @@ export default function Search() {
   );
 }
 
-function ViceRow({ vice, onPress }: { vice: Vice; onPress: () => void }) {
+function ViceRow({
+  vice,
+  favorited,
+  onPress,
+  onToggleFavorite,
+}: {
+  vice: Vice;
+  favorited: boolean;
+  onPress: () => void;
+  onToggleFavorite: () => void;
+}) {
   return (
     <View style={styles.cardOuter}>
       <Pressable
@@ -202,6 +271,20 @@ function ViceRow({ vice, onPress }: { vice: Vice; onPress: () => void }) {
         <Text style={styles.rowLabel} numberOfLines={1}>
           {vice.label}
         </Text>
+        <Pressable
+          onPress={onToggleFavorite}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={favorited ? 'Remove from favorites' : 'Save vice to favorites'}
+          accessibilityState={{ selected: favorited }}
+          style={({ pressed }) => [styles.heartBtn, pressed && { opacity: 0.6 }]}
+        >
+          <MaterialCommunityIcons
+            name={favorited ? 'heart' : 'heart-outline'}
+            size={20}
+            color={favorited ? COLORS.gold : COLORS.muted55}
+          />
+        </Pressable>
         <MaterialCommunityIcons
           name="chevron-right"
           size={20}
@@ -227,6 +310,12 @@ const styles = StyleSheet.create({
   backBtn: {
     minWidth: 64,
     minHeight: 44,
+    justifyContent: 'center',
+  },
+  accountBtn: {
+    minWidth: 64,
+    minHeight: 44,
+    alignItems: 'flex-end',
     justifyContent: 'center',
   },
   back: {
@@ -324,5 +413,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
     letterSpacing: 0.2,
+  },
+  heartBtn: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 2,
   },
 });

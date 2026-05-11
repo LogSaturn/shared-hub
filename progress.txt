@@ -1,6 +1,6 @@
 VICE APP — BUILD PROGRESS
-Last updated: 2026-05-07
-Current phase: Phase 5 wired — pending real-device validation
+Last updated: 2026-05-11
+Current phase: Phase 2 (v2 features) — kicking off; Phases 0-6 functionally complete
 
 ═══════════════════════════════════════
 PHASE 0 — PROJECT BOOTSTRAP
@@ -147,10 +147,159 @@ PHASE 6 — POLISH
 [x] Favorite button (♡) renders disabled with "Soon" hint — PlaceDetailSheet header
 
 ═══════════════════════════════════════
-PHASE 2 FEATURES (FUTURE)
+PHASE 7 — V2 FEATURES (formerly "Phase 2")
 ═══════════════════════════════════════
-[ ] Supabase Auth setup
-[ ] User account creation + sign-in screen
-[ ] Favorites persistence (supabase DB)
-[ ] Custom vice free-text search
-[ ] Filters sheet (radius, open now, brands)
+Auth + persistence + filter UX. Order matters: Auth → Favorites needs DB schema;
+Custom-vice + Filters are independent and can land in parallel.
+
+[~] Supabase Auth: email/password + magic link wired; OAuth hidden until upstream done
+    [ ] Dashboard: enable Email provider (default — confirm settings)
+    [ ] Dashboard: add `vice://auth/callback` + dev exp:// URL to redirect allowlist
+    [ ] Dashboard: enable Apple provider (Service ID, Team ID, Key ID, .p8 key)
+    [ ] Dashboard: enable Google provider (Web OAuth client ID + secret)
+    [ ] Apple Dev portal: enable Sign in with Apple capability for bundle ID
+    [ ] Google Cloud: create OAuth clients (iOS + Android + Web)
+    [ ] Add expo-apple-authentication; wire native flow to signInWithIdToken
+    [ ] Add expo-auth-session for Google; wire native flow to signInWithIdToken
+    [ ] Un-hide OAuth buttons in app/(auth)/sign-in.tsx once wired
+[x] lib/auth.ts — supabase.auth wrappers (signIn, signUp, magicLink, idToken, signOut)
+[x] hooks/useSession.ts — session subscription, persisted via supabase client
+[x] app/(auth)/sign-in.tsx — email + magic-link, OAuth hidden ("more options soon")
+[x] app/(auth)/check-email.tsx — magic-link confirmation + resend
+[x] app/account.tsx — session + profile display + sign out + Favorites placeholder
+[x] Deep-link handler in _layout for vice://auth/callback
+[x] Search header → Account entry point
+[x] DB: profiles table (auto-create on signup, RLS, jsonb preferences for expansion)
+[x] DB: favorites table (kind=place|vice, snapshot jsonb, RLS, unique per user)
+[x] DB: vice_searches table (recents + future analytics, RLS)
+[x] DB security advisors clean (search_path pinned, RPC EXECUTE revoked)
+[x] lib/profile.ts — getProfile, updateProfile, mergePreferences
+[x] lib/favorites.ts — list/add/remove/toggle, snapshot helpers
+[x] hooks/useFavorites.ts — Map cache, optimistic toggle with rollback
+[x] lib/viceSearches.ts — logViceSearch, recentViceIds, clearViceSearches
+[x] PlaceDetailSheet ♡ → real toggle; anon users routed to /account
+[x] app/search.tsx pick() → fire-and-forget logViceSearch
+[x] app/favorites.tsx — places + vices sections; empty state
+[x] app/account.tsx Favorites row → /favorites
+[x] Gate favorites behind session (Alert with "Sign in" CTA on anon tap)
+[x] Hydrate Zustand recents from server on sign-in (hooks/useSessionSync)
+[x] Vice ♡ button on search rows (catalog + recents both wired)
+[x] Account dashboard: avatar, email, stats (Vices/Places/Distance), tabs
+[x] getViceSearchStats() — distinct vices, trip count, cumulative haversine
+[ ] /favorites screen still exists but unlinked — decide keep or remove
+[ ] Custom vice free-text search: wire SearchInput.onSubmit through to placesApi.searchText
+[ ] Custom vice: persist last 5 custom queries alongside recentViceIds
+[ ] components/sheets/FiltersSheet.tsx — radius slider, openNow toggle, brand chips
+[ ] Wire filters into usePlaces fetch (radiusMeters already in store; openNow/brands new)
+[ ] Filters sheet entry point on compass screen (gear icon in header)
+
+═══════════════════════════════════════
+PHASE 8 — UI AUDIT / FIXES
+═══════════════════════════════════════
+Pass over every screen with a checklist; fix what's off before UX polish.
+
+[ ] Inventory: list every screen + sheet, screenshot each on a real device
+[ ] Spacing audit: verify SPACING tokens used consistently (no raw px)
+[ ] Typography audit: every Text uses TYPOGRAPHY.fontFamily* (no system fallback)
+[ ] Color audit: every color from COLORS (no inline hex)
+[ ] Touch targets: ≥ 44pt on iOS, ≥ 48dp on Android (Pressable hitSlop where needed)
+[ ] Safe-area: top + bottom edges respected on notched/gesture devices
+[ ] Landscape: either lock to portrait in app.json or verify layout doesn't break
+[ ] Empty / loading / error states for every async surface (favorites, search, compass)
+[ ] Dark backdrop consistency: bg, card, sheet backgrounds against COLORS palette
+[ ] Icon sizing: MaterialCommunityIcons consistent across header/buttons
+[ ] Sheet snap points: feel right on small (SE-class) and large (Pro Max) screens
+[ ] Loading screen pulse: no jank on lower-end Android
+[ ] Compass needle: no visible spring overshoot at NEEDLE_SPRING current settings
+[ ] CompassDial labels: legible at 300pt with current contrast
+[ ] Accessibility: accessibilityLabel on all Pressables, role on headings
+[ ] RTL: layout doesn't break under I18nManager.forceRTL (or document opt-out)
+[ ] Reduced-motion: honor AccessibilityInfo.isReduceMotionEnabled for needle spring
+
+═══════════════════════════════════════
+PHASE 9 — UX WALKTHROUGH / ONBOARDING
+═══════════════════════════════════════
+First-run experience and permission priming.
+
+[ ] First-launch detection (AsyncStorage flag "vice.onboardingComplete")
+[ ] Onboarding slides: what vice is, how the compass works, calibration tip
+[ ] Permission priming screen BEFORE expo-location request (explain the why)
+[ ] Permission priming for magnetometer/sensors (if iOS adds a prompt)
+[ ] Soft-deny recovery: deep link to Settings.app if location denied
+[ ] Compass calibration prompt: detect figure-8 motion need, show animation
+[ ] Empty recents: hint card on Search screen ("Pick a vice to start")
+[ ] First-place tap tooltip: "Tap the compass for details"
+[ ] First-hamburger tooltip: "See all nearby places"
+[ ] Skip / replay onboarding from a Settings entry
+[ ] Telemetry stub: event names defined (no SDK yet)
+
+═══════════════════════════════════════
+PHASE 10 — STORE READINESS (Play + App Store)
+═══════════════════════════════════════
+Everything required to submit a build for review.
+
+App config + signing
+[ ] app.json: bundleIdentifier (iOS), package (Android), version, buildNumber, versionCode
+[ ] eas.json: production profile, store submission credentials
+[ ] EAS project initialized + linked
+[ ] App icon (1024x1024 master) + adaptive icon (Android foreground/background)
+[ ] Splash screen asset matching brand
+[ ] iOS Info.plist: NSLocationWhenInUseUsageDescription, NSMotionUsageDescription
+[ ] Android: ACCESS_FINE_LOCATION + ACCESS_COARSE_LOCATION in manifest
+[ ] Production build runs without dev/menu/debug bindings exposed
+
+Listings
+[ ] App name + subtitle (≤ 30 chars iOS, ≤ 30 Android short description)
+[ ] Long description (4000 chars)
+[ ] Keywords (iOS, 100 chars)
+[ ] Category + content rating questionnaire
+[ ] Screenshots: 6.7" iPhone, 6.1" iPhone, iPad if supporting; 16:9 Android phone + 7"/10" tablet
+[ ] Preview video (optional but recommended)
+[ ] Privacy policy URL (hosted, GDPR/CCPA compliant)
+[ ] Support email + marketing URL
+[ ] Apple/Google data-safety form (location, identifiers, ads, in-app purchases)
+
+Legal / compliance
+[ ] Terms of Service
+[ ] Privacy Policy reflecting Supabase, Google Places, ad networks, RevenueCat
+[ ] Apple App Tracking Transparency prompt (if any ad SDK uses IDFA)
+[ ] Google AAID disclosure + opt-out where required
+[ ] COPPA + age gate decision (likely 17+ due to "vices" theme — alcohol/tobacco)
+
+Pre-submit
+[ ] Internal testing track (Play) / TestFlight build
+[ ] Crash-free sessions baseline (Sentry or equivalent)
+[ ] App Store Review Guidelines pass (location use, IAP rules)
+[ ] Play Store Developer Program Policies pass (location justification)
+
+═══════════════════════════════════════
+PHASE 11 — ADS + PAYWALL
+═══════════════════════════════════════
+Monetization. Decide free vs premium boundary BEFORE writing ad code.
+
+Product decisions
+[ ] Free tier scope (e.g. 3 vice fetches/day, banner ads, no favorites cap)
+[ ] Premium tier scope (no ads, unlimited fetches, favorites, custom vice, filters)
+[ ] Pricing: monthly + annual + lifetime? Region-based?
+[ ] Trial: 7-day free trial? Hard paywall vs soft paywall?
+
+Ads
+[ ] Pick ad SDK (AdMob default; AppLovin MAX if mediation needed)
+[ ] Install react-native-google-mobile-ads (config plugin)
+[ ] Ad unit IDs: banner (compass screen bottom?), interstitial (post-fetch?), rewarded
+[ ] AppTrackingTransparency request flow (iOS)
+[ ] UMP consent (EEA/UK) — Google User Messaging Platform SDK
+[ ] Test ad units in dev, production IDs gated by __DEV__
+[ ] Frequency capping (no banner spam, interstitial ≥ N seconds apart)
+
+Paywall
+[ ] RevenueCat account + products configured in App Store Connect + Play Console
+[ ] Install react-native-purchases (config plugin)
+[ ] lib/iap.ts — Purchases.configure, getOfferings, purchasePackage, restore
+[ ] hooks/useEntitlement.ts — exposes isPremium (subscribes to CustomerInfo)
+[ ] components/paywall/PaywallSheet.tsx — offerings list + restore + legal links
+[ ] Trigger paywall on: 3rd daily fetch / favorite tap (anon) / filter open
+[ ] Suppress ads if isPremium
+[ ] Receipt validation handled by RevenueCat (no custom backend needed)
+[ ] Promo codes flow (App Store offer codes, Play promo codes)
+[ ] Webhook stub (RevenueCat → Supabase) for entitlement mirroring (optional)

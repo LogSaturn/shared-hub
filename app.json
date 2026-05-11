@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Vice",
-    "slug": "vice",
+    "slug": "vices",
     "scheme": "vice",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -35,6 +35,13 @@
     "plugins": [
       "expo-router",
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f978a440-4380-4b9a-8aa2-e970d17b31fd"
+      }
+    },
+    "owner": "sirhobbys-organization"
   }
 }
