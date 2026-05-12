@@ -60,7 +60,7 @@ export const PlaceDetailSheet = forwardRef<BottomSheetModal>(function PlaceDetai
             onPress: () => {
               const modalRef = ref as React.RefObject<BottomSheetModal | null> | null;
               modalRef?.current?.dismiss();
-              router.push('/account');
+              router.push('/profile');
             },
           },
         ],

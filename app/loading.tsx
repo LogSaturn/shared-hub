@@ -43,7 +43,7 @@ const warn = (...args: unknown[]) => console.warn('[loading]', ...args);
 
 export default function Loading() {
   const router = useRouter();
-  const selectedVice = useAppStore((s) => s.selectedVice);
+  const activeSearch = useAppStore((s) => s.activeSearch);
 
   const ringA = useSharedValue(0);
   const ringB = useSharedValue(0);
@@ -75,11 +75,11 @@ export default function Loading() {
 
   useEffect(() => {
     log('================ MOUNT ================');
-    log('selectedVice =', selectedVice ? `${selectedVice.id} / ${selectedVice.label}` : 'null');
+    log('activeSearch =', activeSearch ? `${activeSearch.kind} / ${activeSearch.label}` : 'null');
 
-    if (!selectedVice) {
-      warn('no selectedVice — bouncing to /search');
-      router.replace('/search');
+    if (!activeSearch) {
+      warn('no activeSearch — bouncing to tabs');
+      router.replace('/(tabs)');
       return;
     }
 
@@ -152,7 +152,7 @@ export default function Loading() {
       advance('fetching_places');
       let places;
       try {
-        places = await fetchPlaces(selectedVice, loc);
+        places = await fetchPlaces(activeSearch, loc);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         warn('fetchPlaces threw:', msg);
@@ -192,7 +192,7 @@ export default function Loading() {
       clearTimeout(hardTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedVice, attempt]);
+  }, [activeSearch, attempt]);
 
   const ringStyleA = useAnimatedStyle(() => ({
     opacity: 1 - ringA.value,
@@ -215,7 +215,7 @@ export default function Loading() {
     setAttempt((a) => a + 1);
   };
 
-  if (!selectedVice) return null;
+  if (!activeSearch) return null;
 
   return (
     <View style={styles.root}>
@@ -227,7 +227,7 @@ export default function Loading() {
 
       <View style={styles.statusBlock}>
         <Label>{isFailure ? 'Problem' : 'Seeking'}</Label>
-        <Text style={styles.viceName}>{selectedVice.label}</Text>
+        <Text style={styles.viceName}>{activeSearch.label}</Text>
         <Text style={[styles.phase, isFailure && styles.phaseError]}>
           {STEP_TEXT[step]}
         </Text>
@@ -257,7 +257,7 @@ export default function Loading() {
               <Text style={styles.retryText}>Retry</Text>
             </Pressable>
             <Pressable
-              onPress={() => router.replace('/search')}
+              onPress={() => router.replace('/(tabs)')}
               accessibilityRole="button"
               accessibilityLabel="Back to search"
               hitSlop={8}

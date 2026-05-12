@@ -91,7 +91,7 @@ export default function SignIn() {
       const r = await signInWithPassword(email, password);
       setBusy(false);
       if (!r.ok) return Alert.alert('Sign in failed', r.error);
-      router.replace('/account');
+      router.replace('/profile');
       return;
     }
 
@@ -104,7 +104,7 @@ export default function SignIn() {
         params: { email: email.trim() },
       });
     } else {
-      router.replace('/account');
+      router.replace('/profile');
     }
   }
 

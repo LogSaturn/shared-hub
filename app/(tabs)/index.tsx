@@ -12,42 +12,32 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { COLORS, TYPOGRAPHY, SPACING, RADIUS } from '../constants';
-import { VICE_CATEGORIES } from '../constants/vices';
-import { Label } from '../components/ui';
-import { useAppStore } from '../store';
-import { Vice, ViceId } from '../types';
-import { logViceSearch } from '../lib/viceSearches';
-import { useFavorites, useSession } from '../hooks';
-import { viceToSnapshot } from '../lib/favorites';
+import { COLORS, TYPOGRAPHY, SPACING, RADIUS } from '../../constants';
+import { VICE_CATEGORIES } from '../../constants/vices';
+import { Label } from '../../components/ui';
+import { QuickFilterPills } from '../../components/filters';
+import { FiltersSheet } from '../../components/sheets';
+import { useAppStore } from '../../store';
+import { Vice } from '../../types';
+import { logViceSearch } from '../../lib/viceSearches';
+import { useFavorites, useSession } from '../../hooks';
+import { viceToSnapshot } from '../../lib/favorites';
 
-export default function Search() {
+export default function VicesTab() {
   const router = useRouter();
-  const setSelectedVice = useAppStore((s) => s.setSelectedVice);
+  const selectVice = useAppStore((s) => s.selectVice);
+  const selectQuery = useAppStore((s) => s.selectQuery);
   const addRecentVice = useAppStore((s) => s.addRecentVice);
+  const addRecentCustomQuery = useAppStore((s) => s.addRecentCustomQuery);
   const recentViceIds = useAppStore((s) => s.recentViceIds);
+  const recentCustomQueries = useAppStore((s) => s.recentCustomQueries);
   const userLocation = useAppStore((s) => s.userLocation);
+  const openFilterOverlay = useAppStore((s) => s.openFilterOverlay);
   const { session } = useSession();
   const { isFavorited, toggle } = useFavorites();
 
-  async function onToggleViceFavorite(vice: Vice) {
-    if (!session) {
-      Alert.alert(
-        'Sign in to save',
-        'Create an account to save your favorite vices.',
-        [
-          { text: 'Not now', style: 'cancel' },
-          { text: 'Sign in', onPress: () => router.push('/account') },
-        ],
-      );
-      return;
-    }
-    Haptics.selectionAsync().catch(() => {});
-    const r = await toggle('vice', vice.id, viceToSnapshot(vice));
-    if (!r.ok && r.error) Alert.alert('Could not save', r.error);
-  }
-
   const [query, setQuery] = useState('');
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const trimmed = query.trim();
 
   const recentVices = useMemo(
@@ -64,16 +54,49 @@ export default function Search() {
     return VICE_CATEGORIES.filter((v) => v.label.toLowerCase().includes(q));
   }, [trimmed]);
 
-  const showRecents = !trimmed && recentVices.length > 0;
+  const showRecentVices = !trimmed && recentVices.length > 0;
+  const showRecentQueries = !trimmed && recentCustomQueries.length > 0;
 
-  function pick(vice: Vice) {
+  async function onToggleViceFavorite(vice: Vice) {
+    if (!session) {
+      Alert.alert(
+        'Sign in to save',
+        'Create an account to save your favorite vices.',
+        [
+          { text: 'Not now', style: 'cancel' },
+          { text: 'Sign in', onPress: () => router.push('/profile') },
+        ],
+      );
+      return;
+    }
+    Haptics.selectionAsync().catch(() => {});
+    const r = await toggle('vice', vice.id, viceToSnapshot(vice));
+    if (!r.ok && r.error) Alert.alert('Could not save', r.error);
+  }
+
+  function pickVice(vice: Vice) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    setSelectedVice(vice);
+    selectVice(vice);
     addRecentVice(vice.id);
-    // Fire-and-forget server log; no-op for anon users.
     logViceSearch({
       viceId: vice.id,
-      query: vice.id === 'custom' ? vice.searchQuery : null,
+      query: null,
+      location: userLocation
+        ? { lat: userLocation.lat, lng: userLocation.lng }
+        : null,
+    }).catch(() => {});
+    router.push('/loading');
+  }
+
+  function pickQuery(q: string) {
+    const text = q.trim();
+    if (!text) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    addRecentCustomQuery(text);
+    selectQuery(text);
+    logViceSearch({
+      viceId: 'custom',
+      query: text,
       location: userLocation
         ? { lat: userLocation.lat, lng: userLocation.lng }
         : null,
@@ -85,73 +108,37 @@ export default function Search() {
     if (!trimmed) return;
     const lower = trimmed.toLowerCase();
     const match = VICE_CATEGORIES.find(
-      (v) => v.label.toLowerCase() === lower || v.id === (lower as ViceId),
+      (v) => v.label.toLowerCase() === lower || v.id === lower,
     );
-    if (match) {
-      pick(match);
-      return;
-    }
-    pick({
-      id: 'custom',
-      label: trimmed,
-      icon: 'magnify',
-      searchQuery: trimmed,
-    });
+    if (match) return pickVice(match);
+    pickQuery(trimmed);
+  }
+
+  function openFilters() {
+    openFilterOverlay();
+    setFilterSheetOpen(true);
   }
 
   return (
-    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          hitSlop={16}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-          style={({ pressed }) => [
-            styles.backBtn,
-            pressed && { opacity: 0.5 },
-          ]}
-        >
-          <Text style={styles.back}>‹ Back</Text>
-        </Pressable>
-        <Label>Step 01</Label>
-        <Pressable
-          onPress={() => router.push('/account')}
-          hitSlop={16}
-          accessibilityRole="button"
-          accessibilityLabel="Account"
-          style={({ pressed }) => [
-            styles.accountBtn,
-            pressed && { opacity: 0.5 },
-          ]}
-        >
-          <MaterialCommunityIcons
-            name="account-circle-outline"
-            size={24}
-            color={COLORS.muted70}
-          />
-        </Pressable>
-      </View>
-
+    <SafeAreaView style={styles.root} edges={['top']}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
+        <View style={styles.header}>
+          <Label>Vices</Label>
+        </View>
+
         <Text style={styles.heading}>What are you{'\n'}craving?</Text>
-        <Text style={styles.subhead}>Pick one — or type your own.</Text>
 
         <View style={styles.searchBar}>
-          <MaterialCommunityIcons
-            name="magnify"
-            size={20}
-            color={COLORS.muted55}
-          />
+          <MaterialCommunityIcons name="magnify" size={20} color={COLORS.muted55} />
           <TextInput
             value={query}
             onChangeText={setQuery}
             onSubmitEditing={submitQuery}
-            placeholder="Search vices…"
+            placeholder="Search vices or type anything…"
             placeholderTextColor={COLORS.muted55}
             returnKeyType="search"
             autoCorrect={false}
@@ -167,33 +154,60 @@ export default function Search() {
               accessibilityLabel="Clear search"
               style={({ pressed }) => pressed && { opacity: 0.5 }}
             >
-              <MaterialCommunityIcons
-                name="close-circle"
-                size={18}
-                color={COLORS.muted55}
-              />
+              <MaterialCommunityIcons name="close-circle" size={18} color={COLORS.muted55} />
             </Pressable>
           )}
         </View>
 
-        {showRecents && (
+        <Text style={styles.tip}>
+          Tip: using a category gives you better tracking and results.
+        </Text>
+
+        <View style={styles.pillsWrap}>
+          <QuickFilterPills onOpenOverlay={openFilters} />
+        </View>
+
+        {showRecentVices && (
           <View style={styles.section}>
-            <Label style={styles.sectionLabel}>Recent</Label>
+            <Label style={styles.sectionLabel}>Recent vices</Label>
             {recentVices.map((v) => (
               <ViceRow
                 key={`recent-${v.id}`}
                 vice={v}
                 favorited={isFavorited('vice', v.id)}
-                onPress={() => pick(v)}
+                onPress={() => pickVice(v)}
                 onToggleFavorite={() => onToggleViceFavorite(v)}
               />
             ))}
           </View>
         )}
 
+        {showRecentQueries && (
+          <View style={styles.section}>
+            <Label style={styles.sectionLabel}>Recent searches</Label>
+            {recentCustomQueries.map((q) => (
+              <Pressable
+                key={`q-${q}`}
+                onPress={() => pickQuery(q)}
+                accessibilityRole="button"
+                accessibilityLabel={`Search ${q}`}
+                style={({ pressed }) => [styles.queryRow, pressed && { opacity: 0.7 }]}
+              >
+                <View style={styles.queryIcon}>
+                  <MaterialCommunityIcons name="history" size={20} color={COLORS.muted70} />
+                </View>
+                <Text style={styles.queryText} numberOfLines={1}>
+                  {q}
+                </Text>
+                <MaterialCommunityIcons name="arrow-right" size={18} color={COLORS.muted55} />
+              </Pressable>
+            ))}
+          </View>
+        )}
+
         <View style={styles.section}>
           <Label style={styles.sectionLabel}>
-            {showRecents ? 'Browse' : 'All vices'}
+            {showRecentVices || showRecentQueries ? 'Browse' : 'All vices'}
           </Label>
 
           {filtered.length === 0 ? (
@@ -205,17 +219,11 @@ export default function Search() {
                 style={styles.cardPress}
               >
                 <View style={styles.iconBox}>
-                  <MaterialCommunityIcons
-                    name="magnify"
-                    size={22}
-                    color={COLORS.gold}
-                  />
+                  <MaterialCommunityIcons name="magnify" size={22} color={COLORS.gold} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.rowLabel}>Search "{trimmed}"</Text>
-                  <Text style={styles.rowSubLabel}>
-                    No matches — search anyway
-                  </Text>
+                  <Text style={styles.rowSubLabel}>No matches — search anyway</Text>
                 </View>
                 <MaterialCommunityIcons
                   name="arrow-right"
@@ -230,13 +238,18 @@ export default function Search() {
                 key={v.id}
                 vice={v}
                 favorited={isFavorited('vice', v.id)}
-                onPress={() => pick(v)}
+                onPress={() => pickVice(v)}
                 onToggleFavorite={() => onToggleViceFavorite(v)}
               />
             ))
           )}
         </View>
       </ScrollView>
+
+      <FiltersSheet
+        visible={filterSheetOpen}
+        onClose={() => setFilterSheetOpen(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -285,11 +298,7 @@ function ViceRow({
             color={favorited ? COLORS.gold : COLORS.muted55}
           />
         </Pressable>
-        <MaterialCommunityIcons
-          name="chevron-right"
-          size={20}
-          color={COLORS.muted55}
-        />
+        <MaterialCommunityIcons name="chevron-right" size={20} color={COLORS.muted55} />
       </Pressable>
     </View>
   );
@@ -300,51 +309,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.bg,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-  },
-  backBtn: {
-    minWidth: 64,
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  accountBtn: {
-    minWidth: 64,
-    minHeight: 44,
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-  },
-  back: {
-    color: COLORS.muted70,
-    fontFamily: TYPOGRAPHY.fontFamilyMedium,
-    fontSize: 14,
-  },
   scroll: {
     paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.md,
+    paddingTop: SPACING.sm,
     paddingBottom: SPACING.xxl,
+  },
+  header: {
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
   },
   heading: {
     color: COLORS.fg,
     fontFamily: TYPOGRAPHY.fontFamilySemiBold,
-    fontSize: 32,
-    lineHeight: 38,
+    fontSize: 30,
+    lineHeight: 36,
     letterSpacing: -0.6,
     marginTop: SPACING.sm,
   },
-  subhead: {
-    color: COLORS.muted70,
-    fontFamily: TYPOGRAPHY.fontFamily,
-    fontSize: 15,
-    lineHeight: 21,
-    marginTop: SPACING.sm,
-    marginBottom: SPACING.xl,
-  },
   searchBar: {
+    marginTop: SPACING.lg,
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
@@ -354,7 +337,6 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.md,
-    marginBottom: SPACING.xl,
     minHeight: 52,
   },
   searchInput: {
@@ -363,6 +345,19 @@ const styles = StyleSheet.create({
     fontFamily: TYPOGRAPHY.fontFamily,
     fontSize: 16,
     paddingVertical: 0,
+  },
+  tip: {
+    color: COLORS.muted55,
+    fontFamily: TYPOGRAPHY.fontFamily,
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: SPACING.sm,
+    marginLeft: SPACING.xs,
+    letterSpacing: 0.1,
+  },
+  pillsWrap: {
+    marginTop: SPACING.md,
+    marginBottom: SPACING.xl,
   },
   section: {
     marginBottom: SPACING.lg,
@@ -420,5 +415,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 2,
+  },
+  queryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+    backgroundColor: COLORS.card,
+    borderColor: COLORS.border10,
+    borderWidth: 1,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    marginBottom: SPACING.sm,
+    minHeight: 56,
+  },
+  queryIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  queryText: {
+    flex: 1,
+    color: COLORS.fg,
+    fontFamily: TYPOGRAPHY.fontFamilyMedium,
+    fontSize: 15,
+    letterSpacing: -0.1,
   },
 });

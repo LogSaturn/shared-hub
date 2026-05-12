@@ -2,13 +2,70 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from '../types';
-import { DEFAULT_SEARCH_RADIUS_M } from '../constants/config';
+import { QUICK_FILTERS } from '../constants/filters';
+import {
+  defaultFilters,
+  fromQuery,
+  fromVice,
+} from '../lib/searchConfig';
 
 export const useAppStore = create<AppState>()(
   persist(
-    (set) => ({
-      selectedVice: null,
-      setSelectedVice: (vice) => set({ selectedVice: vice }),
+    (set, get) => ({
+      activeSearch: null,
+      setActiveSearch: (cfg) => set({ activeSearch: cfg }),
+
+      selectVice: (vice) => {
+        const filters = get().lastUsedFilters;
+        set({ activeSearch: fromVice(vice, { ...filters }) });
+      },
+
+      selectQuery: (query) => {
+        const filters = get().lastUsedFilters;
+        set({ activeSearch: fromQuery(query, { ...filters }) });
+      },
+
+      updateActiveFilters: (patch) => {
+        const cur = get().activeSearch;
+        const next = { ...get().lastUsedFilters, ...patch };
+        set({
+          lastUsedFilters: next,
+          activeSearch: cur ? { ...cur, filters: next } : cur,
+        });
+      },
+
+      toggleQuickFilter: (id) => {
+        const def = QUICK_FILTERS.find((q) => q.id === id);
+        if (!def) return;
+        const cur = get().activeSearch;
+        const base = cur ? cur.filters : get().lastUsedFilters;
+        const next = def.toggle(base);
+        set({
+          lastUsedFilters: next,
+          activeSearch: cur ? { ...cur, filters: next } : cur,
+        });
+      },
+
+      pendingFilters: defaultFilters(),
+      setPendingFilters: (f) => set({ pendingFilters: f }),
+      setPendingFilter: (patch) =>
+        set((s) => ({ pendingFilters: { ...s.pendingFilters, ...patch } })),
+      openFilterOverlay: () => {
+        const cur = get().activeSearch;
+        const base = cur ? cur.filters : get().lastUsedFilters;
+        set({ pendingFilters: { ...base, priceLevels: [...base.priceLevels] } });
+      },
+      commitPendingFilters: () => {
+        const next = get().pendingFilters;
+        const cur = get().activeSearch;
+        set({
+          lastUsedFilters: next,
+          activeSearch: cur ? { ...cur, filters: next } : cur,
+        });
+      },
+      resetPendingFilters: () => set({ pendingFilters: defaultFilters() }),
+
+      lastUsedFilters: defaultFilters(),
 
       userLocation: null,
       setUserLocation: (loc) => set({ userLocation: loc }),
@@ -23,15 +80,6 @@ export const useAppStore = create<AppState>()(
       targetPlace: null,
       setTargetPlace: (place) => set({ targetPlace: place }),
 
-      filters: {
-        radiusMeters: DEFAULT_SEARCH_RADIUS_M,
-        openNow: false,
-        preferredBrands: [],
-        avoidTypes: [],
-      },
-      setFilters: (f) =>
-        set((s) => ({ filters: { ...s.filters, ...f } })),
-
       recentViceIds: [],
       addRecentVice: (id) =>
         set((s) => ({
@@ -39,17 +87,38 @@ export const useAppStore = create<AppState>()(
         })),
       setRecentViceIds: (ids) => set({ recentViceIds: ids.slice(0, 5) }),
 
+      recentCustomQueries: [],
+      addRecentCustomQuery: (q) => {
+        const trimmed = q.trim();
+        if (!trimmed) return;
+        set((s) => ({
+          recentCustomQueries: [
+            trimmed,
+            ...s.recentCustomQueries.filter(
+              (r) => r.toLowerCase() !== trimmed.toLowerCase(),
+            ),
+          ].slice(0, 5),
+        }));
+      },
+
       units: 'mi',
       setUnits: (units) => set({ units }),
     }),
     {
       name: 'vice-storage',
+      version: 2,
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (s) => ({
         recentViceIds: s.recentViceIds,
+        recentCustomQueries: s.recentCustomQueries,
         units: s.units,
-        filters: s.filters,
+        lastUsedFilters: s.lastUsedFilters,
       }),
+      // v1 → v2 dropped `selectedVice`/`filters` from persisted shape.
+      // The new persist subset is a strict subset of v1's, so the safest
+      // migration is to start fresh — drops stale partialize keys without
+      // a hand-written mapper.
+      migrate: () => ({} as Partial<AppState>),
     },
   ),
 );

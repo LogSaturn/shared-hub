@@ -16,7 +16,7 @@ const log = (...args: unknown[]) => console.log('[compass]', ...args);
 
 export default function Compass() {
   const router = useRouter();
-  const selectedVice = useAppStore((s) => s.selectedVice);
+  const activeSearch = useAppStore((s) => s.activeSearch);
   const targetPlace = useAppStore((s) => s.targetPlace);
   const places = useAppStore((s) => s.places);
   const units = useAppStore((s) => s.units);
@@ -29,8 +29,8 @@ export default function Compass() {
 
   useEffect(() => {
     if (!targetPlace) {
-      log('no targetPlace — redirecting to /search');
-      router.replace('/search');
+      log('no targetPlace — redirecting to home');
+      router.replace('/(tabs)');
       return;
     }
     log(
@@ -44,13 +44,13 @@ export default function Compass() {
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.replace('/')} hitSlop={12}>
+        <Pressable onPress={() => router.replace('/(tabs)')} hitSlop={12}>
           <Text style={styles.back}>‹ Restart</Text>
         </Pressable>
 
         <View style={styles.headerCenter}>
           <Label>Vice</Label>
-          <Text style={styles.vice}>{selectedVice?.label ?? '—'}</Text>
+          <Text style={styles.vice}>{activeSearch?.label ?? '—'}</Text>
         </View>
 
         <Pressable

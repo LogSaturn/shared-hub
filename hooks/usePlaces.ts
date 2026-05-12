@@ -2,7 +2,9 @@ import { useCallback } from 'react';
 import { useAppStore } from '../store';
 import { nearbySearch, RawNearbyPlace } from '../lib/placesApi';
 import { bearingBetween, distanceBetween } from '../lib/bearing';
-import { Place, UserLocation, Vice } from '../types';
+import { Place, UserLocation } from '../types';
+import type { SearchConfig } from '../types/search';
+import { toPlacesQuery } from '../lib/searchConfig';
 
 const M_PER_MI = 1609.34;
 
@@ -29,7 +31,7 @@ function enrich(raw: RawNearbyPlace, origin: UserLocation): Place {
 }
 
 export interface UsePlacesResult {
-  fetch: (vice: Vice, origin: UserLocation) => Promise<Place[]>;
+  fetch: (cfg: SearchConfig, origin: UserLocation) => Promise<Place[]>;
 }
 
 export function usePlaces(): UsePlacesResult {
@@ -37,22 +39,22 @@ export function usePlaces(): UsePlacesResult {
   const setTargetPlace = useAppStore((s) => s.setTargetPlace);
   const setPlacesLoading = useAppStore((s) => s.setPlacesLoading);
   const setPlacesError = useAppStore((s) => s.setPlacesError);
-  const filters = useAppStore((s) => s.filters);
 
   const fetch = useCallback(
-    async (vice: Vice, origin: UserLocation): Promise<Place[]> => {
+    async (cfg: SearchConfig, origin: UserLocation): Promise<Place[]> => {
       setPlacesLoading(true);
       setPlacesError(null);
+      const q = toPlacesQuery(cfg, { maxResults: 20 });
       const args = {
         lat: origin.lat,
         lng: origin.lng,
-        radius: filters.radiusMeters,
-        query: vice.searchQuery,
-        placeTypes: vice.placeTypes,
-        openNow: filters.openNow,
-        maxResults: 20,
+        ...q,
       };
-      log('fetch() invoked with', { vice: vice.id, ...args });
+      log('fetch() invoked with', {
+        kind: cfg.kind,
+        label: cfg.label,
+        ...args,
+      });
       const t0 = Date.now();
       try {
         const raw = await nearbySearch(args);
@@ -84,7 +86,7 @@ export function usePlaces(): UsePlacesResult {
         setPlacesLoading(false);
       }
     },
-    [filters.radiusMeters, filters.openNow, setPlaces, setPlacesLoading, setPlacesError, setTargetPlace],
+    [setPlaces, setPlacesLoading, setPlacesError, setTargetPlace],
   );
 
   return { fetch };

@@ -28,7 +28,7 @@ export default function Favorites() {
   const router = useRouter();
   const { session, loading: sessionLoading } = useSession();
   const { favorites, loading } = useFavorites();
-  const setSelectedVice = useAppStore((s) => s.setSelectedVice);
+  const selectVice = useAppStore((s) => s.selectVice);
   const setTargetPlace = useAppStore((s) => s.setTargetPlace);
   const setPlaces = useAppStore((s) => s.setPlaces);
   const userLocation = useAppStore((s) => s.userLocation);
@@ -52,11 +52,9 @@ export default function Favorites() {
   function pickPlace(row: FavoriteRow) {
     const snap = row.snapshot as PlaceSnapshot;
     if (!userLocation) {
-      // No fix yet — can't compute distance/bearing. Send the user to /loading
-      // via search, which will gather location and re-fetch with this vice.
-      // Practically the favorites screen is usually visited after a session
-      // where location is known; this is a safety fallback.
-      router.replace('/search');
+      // No fix yet — can't compute distance/bearing. Bounce to home so we
+      // pick up a location and the user re-selects from the Vices tab.
+      router.replace('/(tabs)');
       return;
     }
     const place: Place = {
@@ -92,7 +90,7 @@ export default function Favorites() {
       placeTypes: snap.placeTypes,
     };
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    setSelectedVice(vice);
+    selectVice(vice);
     router.push('/loading');
   }
 

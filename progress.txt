@@ -1,6 +1,33 @@
 VICE APP — BUILD PROGRESS
-Last updated: 2026-05-11
-Current phase: Phase 2 (v2 features) — kicking off; Phases 0-6 functionally complete
+Last updated: 2026-05-12
+Current phase: Phase 9 (Hardening + Store Audit Prep) — kicked off
+Phase 8 (UI overhaul + search/filter system): SHIPPED
+Phase 7 partial: OAuth (Apple/Google) still hidden; legacy /favorites unlinked
+
+PICK UP HERE NEXT SESSION
+─────────────────────────
+Quick wins applied this round:
+  • RLS migration rls_optimize_auth_uid_subselect → all 13 policies rewritten
+    to (select auth.uid()). Performance advisor: 14 warnings → 0.
+  • places-proxy edge function v3 deployed (filters now live: openNow,
+    minRating, priceLevels in addition to radius).
+  • Pill rendering bug nailed: wrap visuals in inner View, not on Pressable
+    directly (Fabric clip-layer issue). Memory note saved.
+
+Outstanding from Phase 9 audit, in priority order:
+  1. Dashboard toggle: enable HaveIBeenPwned password protection
+     https://supabase.com/dashboard/project/wuxdtsoihfcrtuxorzfz/auth/policies
+  2. Real branded assets — current icon.png / splash-icon.png / adaptive-icon.png
+     are Expo template placeholders. App Store will reject template assets.
+  3. Privacy policy hosted at a public URL (required for store submission).
+  4. Age rating / content questionnaire (alcohol + tobacco vices → likely 17+).
+  5. Sentry crash reporting wire-up.
+  6. Stress tests: edge function rate-limit burst, bundle size baseline.
+
+Other lanes available when ready:
+  • Phase 7 wrap: OAuth (Apple + Google), legacy /favorites disposition.
+  • Phase 10: UI audit sweep (spacing/typography/contrast/a11y per screen).
+  • Phase 11: Onboarding (permission priming, calibration tip).
 
 ═══════════════════════════════════════
 PHASE 0 — PROJECT BOOTSTRAP
@@ -194,7 +221,116 @@ Custom-vice + Filters are independent and can land in parallel.
 [ ] Filters sheet entry point on compass screen (gear icon in header)
 
 ═══════════════════════════════════════
-PHASE 8 — UI AUDIT / FIXES
+PHASE 8 — UI OVERHAUL + SEARCH & FILTER SYSTEM
+═══════════════════════════════════════
+Restructure navigation around bottom tabs, formalize search/filter state into
+one serializable SearchConfig (widget-ready), build the filter UX, and rework
+the splash into a true preloader.
+
+Data model (approved + landed)
+[x] types/search.ts — SearchConfig (vice|query discriminator), SearchFilters
+[x] constants/filters.ts — DEFAULT_FILTERS, RADIUS_PRESETS_M, RATING_TIERS,
+    PRICE_LEVELS, QUICK_FILTERS registry (id/label/isActive/toggle)
+[x] lib/searchConfig.ts — defaultFilters, fromVice, fromQuery, isCustom,
+    activeFilterCount, toPlacesQuery, serialize/parse (versioned v:1)
+[x] Store: activeSearch + pendingFilters + lastUsedFilters (persisted) +
+    recentCustomQueries; selectVice/selectQuery/toggleQuickFilter/commit/reset
+[x] DB: public.saved_searches (jsonb config, RLS, position for widget ordering)
+[x] lib/savedSearches.ts — list/add/remove/touch/rename/reorder (scaffold only)
+
+Bottom tab navigation
+[x] app/(tabs)/_layout.tsx — three-tab bar (Coming Soon | Vices | Profile)
+[x] app/(tabs)/coming-soon.tsx — placeholder shell (social/friends TBD)
+[x] app/(tabs)/index.tsx — Vices tab (lands on app open)
+[x] app/(tabs)/profile.tsx — account dashboard, back button removed
+[x] Compass + Loading remain as push routes outside the tab group
+[x] Legacy app/search.tsx and app/account.tsx removed; /favorites unlinked
+
+Enhanced search (Vices tab)
+[x] SearchInput accepts freeform text; submit routes through selectQuery →
+    /loading → placesApi.searchText
+[x] Tip line: "Using a category gives you better tracking and results"
+[x] Custom query → activeSearch (kind: 'query'); catalog match still snaps to vice
+[x] Persist last 5 custom queries (addRecentCustomQuery); "Recent searches" row
+
+Quick filter pills
+[x] components/filters/QuickFilterPills.tsx — horizontal row, 4 toggles
+[x] Pills: Within 1mi · Open Now · 4★+ · $$ or less
+[x] Pills commit straight to activeSearch.filters via toggleQuickFilter
+[x] Filter icon at row end opens overlay; activeFilterCount badge wired
+
+Full filter overlay
+[x] components/sheets/FiltersSheet.tsx — Modal (pageSheet) with header/footer
+[x] Radius presets: 0.5mi · 1mi · 5mi · 10mi (single-select chips)
+[x] Open now switch
+[x] Min rating: 3★+ · 4★+ · 4.5★+ (single-select chips)
+[x] Price level: $ · $$ · $$$ · $$$$ (multi-select chips)
+[x] Apply commits pendingFilters; Reset returns to defaults; Cancel discards
+[x] places-proxy edge function updated to honor minRating + priceLevels
+    (searchText path: native param; searchNearby path: client-side filter)
+[x] places-proxy deployed v3 ACTIVE — filters live end-to-end
+
+Splash rework
+[x] Removed tap-to-begin from app/index.tsx
+[x] Splash preloads session restore + Zustand hydration
+[x] Auto-navigates to /(tabs) once preload + MIN_VISIBLE_MS (800ms) resolve
+[x] Pulse-animated "Vice" label replaces the old CTA
+
+Verification
+[x] tsc --noEmit clean
+[x] jest 48/48 green
+[ ] Real-device smoke run end-to-end (Android + iOS)
+
+═══════════════════════════════════════
+PHASE 9 — HARDENING + STORE AUDIT PREP
+═══════════════════════════════════════
+Triage findings from the security/store-readiness audit before opening a
+submission. Renumbered the original "UI audit" to Phase 10 to land hardening
+first — store reviewers won't see UI polish if blocking issues stop the build.
+
+Security (Supabase + edge)
+[ ] Enable auth_leaked_password_protection in Supabase dashboard (HaveIBeenPwned)
+    — dashboard-only toggle; instructions in chat 2026-05-12
+[x] Migration: rls_optimize_auth_uid_subselect — rewrote all 13 RLS policies
+    across profiles/favorites/vice_searches/saved_searches to use
+    (select auth.uid()). Performance advisor warnings: 14 → 0.
+[x] Unused indexes (profiles_username_idx, saved_searches_user_idx) decision:
+    leave for now; will be exercised by future username search / saved-search UI
+
+Dependencies
+[ ] Document 9 npm-audit vulns as dev-tooling-only (transitive through
+    expo→@expo/cli→postcss); accept until next Expo SDK bump
+
+Store readiness — assets + listing
+[ ] Replace placeholder icon.png (1024x1024 master)
+[ ] Replace placeholder splash-icon.png
+[ ] Replace placeholder adaptive-icon.png (Android foreground)
+[ ] Privacy policy hosted at a public URL (Supabase, Google Places, future SDKs)
+[ ] Terms of Service (light — auto-collect, no payments yet)
+[ ] App name + subtitle/short description draft
+[ ] Long description draft (4000 chars)
+[ ] Keywords (iOS, 100 chars)
+[ ] Screenshots: 6.7" iPhone, 6.1" iPhone, Android phone
+
+Store readiness — config + signing
+[ ] app.json: explicit iOS buildNumber + Android versionCode (or rely on
+    EAS appVersionSource:remote — document the choice)
+[ ] eas.json: fill in submit.production with iOS App Store credentials
+    (skip until Apple Developer account exists)
+[ ] Apple Developer enrollment ($99/year) — required for TestFlight + App Store
+[ ] Google Play Developer Console account ($25 one-time)
+[ ] Age rating / content questionnaire (alcohol + tobacco vices → likely 17+)
+[ ] Apple App Privacy form (location, email, search history, identifiers)
+[ ] Google Data Safety form (same data)
+
+Reliability / observability
+[ ] Sentry (or equivalent) SDK + production source-map upload
+[ ] Bundle size baseline: `npx expo export --platform android` snapshot
+[ ] Compass screen reduced-motion + sensor subscription audit on real device
+[ ] Edge function rate-limit smoke test: 35 req in 60s, verify 429s
+
+═══════════════════════════════════════
+PHASE 10 — UI AUDIT / FIXES
 ═══════════════════════════════════════
 Pass over every screen with a checklist; fix what's off before UX polish.
 
@@ -217,7 +353,7 @@ Pass over every screen with a checklist; fix what's off before UX polish.
 [ ] Reduced-motion: honor AccessibilityInfo.isReduceMotionEnabled for needle spring
 
 ═══════════════════════════════════════
-PHASE 9 — UX WALKTHROUGH / ONBOARDING
+PHASE 11 — UX WALKTHROUGH / ONBOARDING
 ═══════════════════════════════════════
 First-run experience and permission priming.
 
@@ -234,8 +370,10 @@ First-run experience and permission priming.
 [ ] Telemetry stub: event names defined (no SDK yet)
 
 ═══════════════════════════════════════
-PHASE 10 — STORE READINESS (Play + App Store)
+PHASE 12 — STORE SUBMISSION (Play + App Store)
 ═══════════════════════════════════════
+Phase 9 covered audit + asset prep. This phase is the actual submission flow
+once Apple Developer account and Play Console exist.
 Everything required to submit a build for review.
 
 App config + signing
@@ -273,7 +411,7 @@ Pre-submit
 [ ] Play Store Developer Program Policies pass (location justification)
 
 ═══════════════════════════════════════
-PHASE 11 — ADS + PAYWALL
+PHASE 13 — ADS + PAYWALL
 ═══════════════════════════════════════
 Monetization. Decide free vs premium boundary BEFORE writing ad code.
 

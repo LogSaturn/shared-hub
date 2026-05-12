@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,32 +12,32 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { COLORS, TYPOGRAPHY, SPACING, RADIUS } from '../constants';
-import { VICE_CATEGORIES } from '../constants/vices';
-import { Label } from '../components/ui';
-import { useSession, useFavorites } from '../hooks';
-import { signOut } from '../lib/auth';
-import { getProfile, type Profile } from '../lib/profile';
+import { COLORS, TYPOGRAPHY, SPACING, RADIUS } from '../../constants';
+import { VICE_CATEGORIES } from '../../constants/vices';
+import { Label } from '../../components/ui';
+import { useSession, useFavorites } from '../../hooks';
+import { signOut } from '../../lib/auth';
+import { getProfile, type Profile } from '../../lib/profile';
 import {
   getViceSearchStats,
   type ViceSearchStats,
-} from '../lib/viceSearches';
+} from '../../lib/viceSearches';
 import {
   FavoriteRow,
   PlaceSnapshot,
   ViceSnapshot,
   refIdToViceId,
-} from '../lib/favorites';
-import { useAppStore } from '../store';
-import type { Place, Vice } from '../types';
-import { distanceBetween, bearingBetween } from '../lib/bearing';
+} from '../../lib/favorites';
+import { useAppStore } from '../../store';
+import type { Place, Vice } from '../../types';
+import { distanceBetween, bearingBetween } from '../../lib/bearing';
 
 const GOLD = '#d9b370';
 const DARK = '#0e0f11';
 
 type Tab = 'places' | 'vices';
 
-export default function Account() {
+export default function Profile() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { session, user, loading } = useSession();
@@ -52,7 +51,7 @@ export default function Account() {
   });
   const [tab, setTab] = useState<Tab>('places');
 
-  const setSelectedVice = useAppStore((s) => s.setSelectedVice);
+  const selectVice = useAppStore((s) => s.selectVice);
   const setTargetPlace = useAppStore((s) => s.setTargetPlace);
   const setPlaces = useAppStore((s) => s.setPlaces);
   const userLocation = useAppStore((s) => s.userLocation);
@@ -152,7 +151,7 @@ export default function Account() {
       placeTypes: snap.placeTypes,
     };
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    setSelectedVice(vice);
+    selectVice(vice);
     router.push('/loading');
   }
 
@@ -173,22 +172,14 @@ export default function Account() {
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          hitSlop={16}
-          style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.5 }]}
-        >
-          <Text style={styles.back}>‹ Back</Text>
-        </Pressable>
         <Label>Account</Label>
-        <View style={{ width: 64 }} />
       </View>
 
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={[
           styles.scroll,
-          { paddingBottom: insets.bottom + SPACING.xxl },
+          { paddingBottom: SPACING.xxl },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -249,7 +240,7 @@ export default function Account() {
           <EmptyState
             icon="heart-outline"
             title="No saved vices"
-            sub="Tap the heart on any vice on the search screen to save it."
+            sub="Tap the heart on any vice on the Vices tab to save it."
           />
         ) : (
           viceRows.map((row) => (
@@ -407,19 +398,9 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
-  },
-  backBtn: {
-    minWidth: 64,
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  back: {
-    color: COLORS.muted70,
-    fontFamily: TYPOGRAPHY.fontFamilyMedium,
-    fontSize: 14,
   },
   scroll: {
     paddingHorizontal: SPACING.lg,

@@ -44,18 +44,38 @@ export interface UserLocation {
   timestamp: number;
 }
 
-export interface SearchFilters {
-  radiusMeters: number;
-  openNow: boolean;
-  preferredBrands: string[];
-  avoidTypes: string[];
-}
-
 export type Units = 'mi' | 'km';
 
+export type { SearchConfig, SearchFilters, PriceLevel, RatingTier } from './search';
+
+import type { SearchConfig, SearchFilters } from './search';
+import type { QuickFilterId } from '../constants/filters';
+
 export interface AppState {
-  selectedVice: Vice | null;
-  setSelectedVice: (vice: Vice) => void;
+  // The search currently driving the compass. Null until the user picks a
+  // vice or submits a free-text query.
+  activeSearch: SearchConfig | null;
+  setActiveSearch: (cfg: SearchConfig | null) => void;
+  // Commit a vice / query selection. Uses lastUsedFilters so filter state
+  // carries between searches within a session.
+  selectVice: (vice: Vice) => void;
+  selectQuery: (query: string) => void;
+  // Commit a filter change into activeSearch.filters AND lastUsedFilters.
+  updateActiveFilters: (patch: Partial<SearchFilters>) => void;
+  toggleQuickFilter: (id: QuickFilterId) => void;
+
+  // Pending filters live here while the full filter overlay is open. Apply
+  // copies these into activeSearch.filters; Cancel discards them; Reset
+  // returns them to defaults.
+  pendingFilters: SearchFilters;
+  setPendingFilters: (f: SearchFilters) => void;
+  setPendingFilter: (patch: Partial<SearchFilters>) => void;
+  openFilterOverlay: () => void;
+  commitPendingFilters: () => void;
+  resetPendingFilters: () => void;
+
+  // Persisted across sessions so the next search remembers prior filter choices.
+  lastUsedFilters: SearchFilters;
 
   userLocation: UserLocation | null;
   setUserLocation: (loc: UserLocation) => void;
@@ -70,12 +90,12 @@ export interface AppState {
   targetPlace: Place | null;
   setTargetPlace: (place: Place) => void;
 
-  filters: SearchFilters;
-  setFilters: (filters: Partial<SearchFilters>) => void;
-
   recentViceIds: ViceId[];
   addRecentVice: (id: ViceId) => void;
   setRecentViceIds: (ids: ViceId[]) => void;
+
+  recentCustomQueries: string[];
+  addRecentCustomQuery: (q: string) => void;
 
   units: Units;
   setUnits: (units: Units) => void;

@@ -66,10 +66,9 @@ export default function RootLayout() {
           <StatusBar style="light" />
           <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
             <Stack.Screen name="index" />
-            <Stack.Screen name="search" />
+            <Stack.Screen name="(tabs)" />
             <Stack.Screen name="loading" />
             <Stack.Screen name="compass" />
-            <Stack.Screen name="account" />
             <Stack.Screen name="favorites" />
             <Stack.Screen name="(auth)" />
           </Stack>

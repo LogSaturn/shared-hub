@@ -30,6 +30,8 @@ interface NearbyArgs {
   query?: string;
   placeTypes?: string[];
   openNow?: boolean;
+  minRating?: number;
+  priceLevels?: number[];
   maxResults?: number;
 }
 

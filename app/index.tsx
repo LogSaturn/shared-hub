@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -9,24 +9,55 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ViceNeedle } from '../components/compass';
 import { COLORS, TYPOGRAPHY, SPACING } from '../constants';
+import { useSession } from '../hooks/useSession';
+import { useAppStore } from '../store';
+
+// Minimum time the splash stays visible. Without this, fast cold-boots flash
+// the splash for a single frame which looks broken.
+const MIN_VISIBLE_MS = 800;
 
 export default function Splash() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const goNext = () => router.push('/search');
+  const { loading: sessionLoading } = useSession();
 
+  // Zustand persist hydration — gate navigation on it so /(tabs) reads a
+  // populated store on first paint (recents, filters, etc.).
+  const [hydrated, setHydrated] = useState(
+    useAppStore.persist?.hasHydrated() ?? true,
+  );
+  useEffect(() => {
+    if (!useAppStore.persist) return;
+    if (useAppStore.persist.hasHydrated()) {
+      setHydrated(true);
+      return;
+    }
+    const unsub = useAppStore.persist.onFinishHydration(() => setHydrated(true));
+    return unsub;
+  }, []);
+
+  const [minElapsed, setMinElapsed] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setMinElapsed(true), MIN_VISIBLE_MS);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (sessionLoading || !hydrated || !minElapsed) return;
+    router.replace('/(tabs)');
+  }, [sessionLoading, hydrated, minElapsed, router]);
+
+  // Subtle pulse on the needle so the loading state reads as alive.
   const pulse = useSharedValue(0.55);
   useEffect(() => {
     pulse.value = withDelay(
-      400,
+      200,
       withRepeat(
         withSequence(
-          withTiming(1, { duration: 1400, easing: Easing.out(Easing.ease) }),
-          withTiming(0.55, { duration: 1400, easing: Easing.in(Easing.ease) }),
+          withTiming(1, { duration: 1200, easing: Easing.out(Easing.ease) }),
+          withTiming(0.55, { duration: 1200, easing: Easing.in(Easing.ease) }),
         ),
         -1,
         false,
@@ -34,30 +65,16 @@ export default function Splash() {
     );
   }, [pulse]);
 
-  const beginAnim = useAnimatedStyle(() => ({ opacity: pulse.value }));
+  const labelStyle = useAnimatedStyle(() => ({ opacity: pulse.value }));
 
   return (
     <View style={styles.root}>
       <View style={styles.center}>
         <ViceNeedle size={88} orientation="logo" />
       </View>
-
-      <Pressable
-        onPress={goNext}
-        hitSlop={24}
-        accessibilityRole="button"
-        accessibilityLabel="Tap to begin"
-        accessibilityHint="Opens vice selection"
-        style={({ pressed }) => [
-          styles.beginButton,
-          { paddingBottom: Math.max(insets.bottom, SPACING.lg) },
-          pressed && styles.beginButtonPressed,
-        ]}
-      >
-        <Animated.View style={beginAnim}>
-          <Text style={styles.beginText}>Tap to Begin</Text>
-        </Animated.View>
-      </Pressable>
+      <Animated.View style={[styles.labelWrap, labelStyle]}>
+        <Text style={styles.label}>Vice</Text>
+      </Animated.View>
     </View>
   );
 }
@@ -73,19 +90,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  beginButton: {
+  labelWrap: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingTop: SPACING.md,
+    bottom: SPACING.xxl + SPACING.lg,
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  beginButtonPressed: {
-    opacity: 0.5,
-  },
-  beginText: {
+  label: {
     color: COLORS.fg,
     fontFamily: TYPOGRAPHY.fontFamilyMedium,
     fontSize: 12,

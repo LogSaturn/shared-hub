@@ -20,7 +20,9 @@ A React Native compass app that points you toward the nearest place to satisfy y
 - `CompassFilter` (complementary filter, α=0.98) fuses gyroscope + magnetometer for smooth, accurate heading.
 - Always call `shortestAngle()` before updating needle rotation to prevent wrong-way spins.
 - Google Places API key lives only in Supabase function secrets; the app calls the `places-proxy` edge function with the Supabase anon key.
-- All Supabase tables are protected by RLS (`auth.uid() = user_id`). Profiles auto-create on signup via trigger.
+- All Supabase tables are protected by RLS with `(select auth.uid()) = user_id` (subselect form caches the auth call per query rather than re-evaluating per row).
+- Search state lives in one `SearchConfig` object (vice-or-query discriminator + filters), serialized via a versioned wrapper so future filter additions don't break stored saved searches.
+- Tappable pill/chip components wrap their visual styling in an inner `View` (Pressable carries only touch). Fabric's clip layer drops borders/fills when styled directly on Pressable — see `components/filters/QuickFilterPills.tsx`.
 
 ---
 
@@ -111,47 +113,59 @@ Not configured yet. Path when ready:
 ```
 app/                  expo-router screens
   (auth)/             sign-in, check-email (route group)
-  index.tsx           splash
-  search.tsx          vice picker
+  (tabs)/             bottom tab navigator — landing surface
+    _layout.tsx       three-tab bar (Coming Soon | Vices | Profile)
+    index.tsx         Vices tab — search + quick pills + filter icon
+    coming-soon.tsx   placeholder for social/friends feature
+    profile.tsx       dashboard (avatar, stats, Places/Vices tabs)
+  index.tsx           splash — preloads then auto-navigates to (tabs)
   loading.tsx         "finding the nearest…" pulse
-  compass.tsx         live compass + place sheets
-  account.tsx         dashboard (avatar, stats, Places/Vices tabs)
-  favorites.tsx       standalone favorites list (legacy entry, unlinked)
+  compass.tsx         live compass + place sheets (push from Vices)
+  favorites.tsx       legacy standalone favorites (unlinked; profile tab covers this)
 components/
   compass/            ViceNeedle, CompassDial, CompassRose
-  sheets/             NearbySheet, PlaceDetailSheet
+  filters/            QuickFilterPills (Vices tab pill row + filter icon)
+  sheets/             NearbySheet, PlaceDetailSheet, FiltersSheet
   ui/                 shared primitives (Label, …)
-constants/            colors, spacing, vices catalog, config
+constants/            colors, spacing, vices catalog, config, filters (presets/defaults/QUICK_FILTERS)
 hooks/                useCompass, useLocation, usePlaces, useSession,
                       useFavorites, useSessionSync
 lib/
   bearing.ts          haversine + bearing math
   compassFilter.ts    sensor fusion
-  placesApi.ts        nearby + details via edge function
+  placesApi.ts        nearby + details via edge function (radius/openNow/minRating/priceLevels)
+  searchConfig.ts     SearchConfig helpers — defaultFilters, fromVice/fromQuery,
+                      toPlacesQuery, activeFilterCount, filtersEqual, serialize/parse (v:1)
   supabase.ts         client with AsyncStorage session
   auth.ts             signIn / signUp / signOut / magic link / OAuth
   profile.ts          read/write public.profiles
   favorites.ts        list/add/remove/toggle favorites
+  savedSearches.ts    list/add/remove/touch/rename/reorder (scaffold; no UI yet)
   viceSearches.ts     log + recent + stats
-store/                Zustand store
-types/                domain types
+store/                Zustand store — activeSearch, pendingFilters, lastUsedFilters,
+                      recentViceIds, recentCustomQueries, units (persisted subset)
+types/                domain types (includes types/search.ts — SearchConfig/SearchFilters)
 supabase/functions/   places-proxy edge function (Deno)
 ```
 
 ## Database
 
-Public schema, all under RLS (`auth.uid()`):
+Public schema, all under RLS using the subselect form `(select auth.uid()) = user_id`:
 
 - `profiles` — auto-created on signup. Typed columns for indexed fields (`username`, `units`, `entitlement`, `onboarding_completed`); `preferences jsonb` for everything personalized.
 - `favorites` — `kind in ('place','vice')` discriminator, `ref_id`, `snapshot jsonb`. Unique per (user, kind, ref).
 - `vice_searches` — append-only search log; powers "recents" and dashboard stats.
+- `saved_searches` — scaffolded for the future widget / saved-search UI. Stores a serialized `SearchConfig` (jsonb) plus `position` and `last_used_at`.
 
 ## Roadmap
 
-See `progress.txt` for the full phase list:
+See `progress.txt` for the full phase list — also has a "PICK UP HERE NEXT SESSION" block at the top for cross-session continuity.
+
 - Phase 0–6 ✅ — bootstrap → compass → places → polish
-- Phase 7 ✅ — auth, favorites, account dashboard
-- Phase 8 — UI audit / fixes
-- Phase 9 — onboarding / UX walkthrough
-- Phase 10 — Play Store + App Store readiness
-- Phase 11 — Ads + paywall
+- Phase 7 ✅ (partial) — auth, favorites, account dashboard. OAuth still hidden.
+- Phase 8 ✅ — UI overhaul: bottom tabs, enhanced search, filter system, splash rework
+- Phase 9 — Hardening + store audit prep (in progress: RLS optimized, awaiting assets/privacy policy/age rating)
+- Phase 10 — UI audit / fixes
+- Phase 11 — Onboarding / UX walkthrough
+- Phase 12 — Play Store + App Store submission
+- Phase 13 — Ads + paywall

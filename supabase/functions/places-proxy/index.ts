@@ -5,7 +5,7 @@
 // normalizes the response, and returns Place[] shaped for the client.
 //
 // Supports two actions:
-//   { action: "nearby",  lat, lng, radius, query?, placeTypes?, openNow? }
+//   { action: "nearby",  lat, lng, radius, query?, placeTypes?, openNow?, minRating?, priceLevels? }
 //   { action: "details", placeId }
 
 const GOOGLE_PLACES_KEY = Deno.env.get("GOOGLE_PLACES_API_KEY") ?? "";
@@ -125,6 +125,14 @@ function json(body: unknown, status = 200, extra: Record<string, string> = {}) {
   });
 }
 
+// Google's PRICE_LEVEL_* enum strings, indexed by 1-4 integer received from client.
+const PRICE_LEVEL_ENUM: Record<number, string> = {
+  1: "PRICE_LEVEL_INEXPENSIVE",
+  2: "PRICE_LEVEL_MODERATE",
+  3: "PRICE_LEVEL_EXPENSIVE",
+  4: "PRICE_LEVEL_VERY_EXPENSIVE",
+};
+
 async function handleNearby(body: {
   lat: number;
   lng: number;
@@ -132,18 +140,35 @@ async function handleNearby(body: {
   query?: string;
   placeTypes?: string[];
   openNow?: boolean;
+  minRating?: number;
+  priceLevels?: number[];
   maxResults?: number;
 }) {
   const { lat, lng } = body;
   const radius = Math.min(Math.max(body.radius ?? 1600, 100), 50_000);
   const maxResultCount = Math.min(Math.max(body.maxResults ?? 20, 1), 20);
 
+  const minRating =
+    typeof body.minRating === "number" && body.minRating > 0
+      ? Math.min(Math.max(body.minRating, 0), 5)
+      : null;
+  const priceLevelEnums =
+    Array.isArray(body.priceLevels) && body.priceLevels.length > 0
+      ? body.priceLevels
+          .map((n) => PRICE_LEVEL_ENUM[n])
+          .filter((s): s is string => Boolean(s))
+      : null;
+
   // The New API exposes two surfaces: searchNearby (type-driven) and
   // searchText (free-text). When `query` is present we prefer searchText —
   // it returns the most relevant results for "boba tea" / "smoke shop"
   // style queries that don't map cleanly to a single place type.
+  //
+  // searchText supports minRating/priceLevels natively. searchNearby does
+  // not — we filter those client-side after the call for that branch.
   let url: string;
   let payload: Record<string, unknown>;
+  let filterClientSide = false;
 
   const trimmedQuery = body.query?.trim().slice(0, MAX_QUERY_LENGTH);
 
@@ -159,6 +184,8 @@ async function handleNearby(body: {
         },
       },
       ...(body.openNow ? { openNow: true } : {}),
+      ...(minRating !== null ? { minRating } : {}),
+      ...(priceLevelEnums ? { priceLevels: priceLevelEnums } : {}),
     };
   } else {
     url = "https://places.googleapis.com/v1/places:searchNearby";
@@ -174,6 +201,7 @@ async function handleNearby(body: {
         ? { includedTypes: body.placeTypes }
         : {}),
     };
+    filterClientSide = minRating !== null || priceLevelEnums !== null;
   }
 
   const res = await fetch(url, {
@@ -200,7 +228,22 @@ async function handleNearby(body: {
   }
 
   const data = (await res.json()) as { places?: GooglePlace[] };
-  const places = (data.places ?? []).map(normalizePlace);
+  let places = (data.places ?? []).map(normalizePlace);
+
+  if (filterClientSide) {
+    if (minRating !== null) {
+      places = places.filter((p) => (p.rating ?? 0) >= minRating);
+    }
+    if (priceLevelEnums) {
+      const allowed = new Set(
+        body.priceLevels?.filter((n) => n >= 1 && n <= 4) ?? [],
+      );
+      places = places.filter(
+        (p) => p.priceLevel != null && allowed.has(p.priceLevel),
+      );
+    }
+  }
+
   return json({ places });
 }
 
