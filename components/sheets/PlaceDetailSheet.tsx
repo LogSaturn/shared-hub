@@ -10,6 +10,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS } from '../../constants';
+import { MIN_TOUCH } from '../../constants/layout';
 import { Label } from '../ui';
 import { useAppStore } from '../../store';
 import { placeDetails, PlaceDetails } from '../../lib/placesApi';
@@ -324,9 +325,9 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   favoriteBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: MIN_TOUCH,
+    height: MIN_TOUCH,
+    borderRadius: MIN_TOUCH / 2,
     borderWidth: 1,
     borderColor: COLORS.border10,
     alignItems: 'center',

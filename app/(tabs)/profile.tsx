@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  ActionSheetIOS,
   ActivityIndicator,
   Alert,
+  Image,
+  Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,6 +22,7 @@ import { Label } from '../../components/ui';
 import { useSession, useFavorites } from '../../hooks';
 import { signOut } from '../../lib/auth';
 import { getProfile, type Profile } from '../../lib/profile';
+import { pickAndUploadAvatar, removeAvatar, type AvatarSource } from '../../lib/avatar';
 import {
   getViceSearchStats,
   type ViceSearchStats,
@@ -50,6 +55,7 @@ export default function Profile() {
     distanceMeters: 0,
   });
   const [tab, setTab] = useState<Tab>('places');
+  const [avatarBusy, setAvatarBusy] = useState(false);
 
   const selectVice = useAppStore((s) => s.selectVice);
   const setTargetPlace = useAppStore((s) => s.setTargetPlace);
@@ -91,6 +97,74 @@ export default function Profile() {
       viceRows: vices.sort(byDateDesc),
     };
   }, [favorites]);
+
+  async function runAvatarAction(action: AvatarSource | 'remove') {
+    if (avatarBusy) return;
+    setAvatarBusy(true);
+    try {
+      Haptics.selectionAsync().catch(() => {});
+      const r =
+        action === 'remove'
+          ? await removeAvatar()
+          : await pickAndUploadAvatar(action);
+      if (!r.ok) {
+        if (r.error !== 'Cancelled.') Alert.alert('Could not update photo', r.error);
+        return;
+      }
+      // Refresh local state — avatar_url is the only field that changed.
+      setProfile((p) =>
+        p
+          ? {
+              ...p,
+              avatar_url: action === 'remove' ? null : (r.data as string),
+            }
+          : p,
+      );
+    } finally {
+      setAvatarBusy(false);
+    }
+  }
+
+  function openAvatarSheet() {
+    if (avatarBusy) return;
+    const hasAvatar = Boolean(profile?.avatar_url);
+
+    if (Platform.OS === 'ios') {
+      const options = hasAvatar
+        ? ['Take photo', 'Choose from library', 'Remove photo', 'Cancel']
+        : ['Take photo', 'Choose from library', 'Cancel'];
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options,
+          cancelButtonIndex: options.length - 1,
+          destructiveButtonIndex: hasAvatar ? 2 : undefined,
+          userInterfaceStyle: 'dark',
+        },
+        (idx) => {
+          if (idx === 0) runAvatarAction('camera');
+          else if (idx === 1) runAvatarAction('library');
+          else if (hasAvatar && idx === 2) runAvatarAction('remove');
+        },
+      );
+      return;
+    }
+
+    // Android: simple Alert with 2-3 buttons. Avoids pulling in another
+    // native sheet lib for one screen.
+    const buttons: { text: string; onPress?: () => void; style?: 'cancel' | 'destructive' }[] = [
+      { text: 'Take photo', onPress: () => runAvatarAction('camera') },
+      { text: 'Choose from library', onPress: () => runAvatarAction('library') },
+    ];
+    if (hasAvatar) {
+      buttons.push({
+        text: 'Remove photo',
+        style: 'destructive',
+        onPress: () => runAvatarAction('remove'),
+      });
+    }
+    buttons.push({ text: 'Cancel', style: 'cancel' });
+    Alert.alert('Profile photo', 'Update or remove your photo.', buttons);
+  }
 
   async function handleSignOut() {
     const r = await signOut();
@@ -184,9 +258,34 @@ export default function Profile() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.profileHeader}>
-          <View style={styles.avatar}>
-            <MaterialCommunityIcons name="account" size={48} color={GOLD} />
-          </View>
+          <Pressable
+            onPress={openAvatarSheet}
+            accessibilityRole="button"
+            accessibilityLabel="Edit profile photo"
+            disabled={avatarBusy}
+            hitSlop={10}
+            style={({ pressed }) => [styles.avatarHit, pressed && { opacity: 0.85 }]}
+          >
+            <View style={styles.avatar}>
+              {profile?.avatar_url ? (
+                <Image
+                  source={{ uri: profile.avatar_url }}
+                  style={styles.avatarImg}
+                  accessibilityIgnoresInvertColors
+                />
+              ) : (
+                <MaterialCommunityIcons name="account" size={48} color={GOLD} />
+              )}
+              {avatarBusy && (
+                <View style={styles.avatarOverlay}>
+                  <ActivityIndicator color={GOLD} />
+                </View>
+              )}
+            </View>
+            <View style={styles.avatarBadge}>
+              <MaterialCommunityIcons name="pencil" size={14} color={DARK} />
+            </View>
+          </Pressable>
           <Text style={styles.name} numberOfLines={1}>
             {displayName}
           </Text>
@@ -410,6 +509,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: SPACING.xl,
   },
+  avatarHit: {
+    width: 88,
+    height: 88,
+    marginBottom: SPACING.md,
+    position: 'relative',
+  },
   avatar: {
     width: 88,
     height: 88,
@@ -419,7 +524,31 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: SPACING.md,
+    overflow: 'hidden',
+  },
+  avatarImg: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+  },
+  avatarOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(14,15,17,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarBadge: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: GOLD,
+    borderColor: DARK,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   name: {
     color: COLORS.fg,

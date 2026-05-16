@@ -17,8 +17,12 @@ import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS } from '../../constants';
+import { MIN_TOUCH } from '../../constants/layout';
 import { Label } from '../../components/ui';
 import { signInWithPassword, signUpWithPassword } from '../../lib/auth';
+import { isUsernameAvailable, updateProfile } from '../../lib/profile';
+
+const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
 
 type Mode = 'signin' | 'signup';
 
@@ -41,6 +45,7 @@ export default function SignIn() {
 
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);
@@ -48,6 +53,7 @@ export default function SignIn() {
   const [busy, setBusy] = useState(false);
 
   const emailRef = useRef<TextInput>(null);
+  const usernameRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const confirmRef = useRef<TextInput>(null);
 
@@ -67,6 +73,15 @@ export default function SignIn() {
       return;
     }
     if (isSignup) {
+      const normalizedUsername = username.trim().toLowerCase();
+      if (!USERNAME_RE.test(normalizedUsername)) {
+        usernameRef.current?.focus();
+        Alert.alert(
+          'Invalid username',
+          '3–20 characters. Lowercase letters, numbers, and underscores only.',
+        );
+        return;
+      }
       if (password.length < 6) {
         passwordRef.current?.focus();
         Alert.alert('Password too short', 'Use at least 6 characters.');
@@ -82,6 +97,19 @@ export default function SignIn() {
         Alert.alert('Passwords don’t match', 'Make sure both passwords are the same.');
         return;
       }
+
+      // Pre-flight check. The unique index on profiles.username is the real
+      // guard, but checking here lets us fail fast before creating an auth
+      // user that we'd then have to clean up.
+      const avail = await isUsernameAvailable(normalizedUsername);
+      if (!avail.ok || !avail.data) {
+        usernameRef.current?.focus();
+        Alert.alert(
+          'Username taken',
+          'That username is already in use. Try another.',
+        );
+        return;
+      }
     }
 
     setBusy(true);
@@ -95,13 +123,35 @@ export default function SignIn() {
       return;
     }
 
+    const normalizedUsername = username.trim().toLowerCase();
     const r = await signUpWithPassword(email, password);
+    if (!r.ok) {
+      setBusy(false);
+      return Alert.alert('Sign up failed', r.error);
+    }
+
+    // Write username + display_name. Only safe when we have a session — if
+    // email confirmation is required, supabase returns no session and the
+    // RLS update would fail. In that case we stash the username locally
+    // and the profile screen finishes the write after the user confirms.
+    if (r.data.session) {
+      const u = await updateProfile({
+        username: normalizedUsername,
+        display_name: normalizedUsername,
+      });
+      if (!u.ok) {
+        // Profile row exists (auth trigger created it) — most likely cause
+        // is a race where the username was claimed between pre-flight and
+        // here. Surface the message but keep the user signed in.
+        Alert.alert('Heads up', `Account created, but username didn't save: ${u.error}`);
+      }
+    }
     setBusy(false);
-    if (!r.ok) return Alert.alert('Sign up failed', r.error);
+
     if (r.data.needsConfirmation) {
       router.replace({
         pathname: '/(auth)/check-email',
-        params: { email: email.trim() },
+        params: { email: email.trim(), username: normalizedUsername },
       });
     } else {
       router.replace('/profile');
@@ -111,6 +161,7 @@ export default function SignIn() {
   function switchMode() {
     setMode(isSignup ? 'signin' : 'signup');
     setConfirmPassword('');
+    setUsername('');
     setShowConfirm(false);
   }
 
@@ -154,7 +205,11 @@ export default function SignIn() {
                 ref={emailRef}
                 value={email}
                 onChangeText={setEmail}
-                onSubmitEditing={() => passwordRef.current?.focus()}
+                onSubmitEditing={() =>
+                  isSignup
+                    ? usernameRef.current?.focus()
+                    : passwordRef.current?.focus()
+                }
                 placeholder="you@example.com"
                 placeholderTextColor={COLORS.muted55}
                 autoCapitalize="none"
@@ -168,6 +223,35 @@ export default function SignIn() {
               />
             </View>
           </View>
+
+          {isSignup && (
+            <View style={styles.field}>
+              <Label style={styles.fieldLabel}>Username</Label>
+              <View style={styles.inputRow}>
+                <TextInput
+                  ref={usernameRef}
+                  value={username}
+                  onChangeText={(v) =>
+                    setUsername(v.toLowerCase().replace(/[^a-z0-9_]/g, ''))
+                  }
+                  onSubmitEditing={() => passwordRef.current?.focus()}
+                  placeholder="yourname"
+                  placeholderTextColor={COLORS.muted55}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="username-new"
+                  textContentType="username"
+                  maxLength={20}
+                  returnKeyType="next"
+                  accessibilityLabel="Username"
+                  style={styles.input}
+                />
+              </View>
+              <Text style={styles.fieldHint}>
+                3–20 chars · lowercase, numbers, underscores
+              </Text>
+            </View>
+          )}
 
           <View style={styles.field}>
             <Label style={styles.fieldLabel}>Password</Label>
@@ -332,7 +416,7 @@ const styles = StyleSheet.create({
   },
   backBtn: {
     minWidth: 64,
-    minHeight: 44,
+    minHeight: MIN_TOUCH,
     justifyContent: 'center',
   },
   back: {
@@ -366,6 +450,14 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     marginBottom: SPACING.sm,
+    marginLeft: SPACING.xs,
+  },
+  fieldHint: {
+    color: COLORS.muted55,
+    fontFamily: TYPOGRAPHY.fontFamily,
+    fontSize: 11,
+    letterSpacing: 0.2,
+    marginTop: SPACING.xs,
     marginLeft: SPACING.xs,
   },
   // Row wraps input + (optional) eye button so they're flex-laid-out

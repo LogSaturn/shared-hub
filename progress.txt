@@ -1,18 +1,35 @@
 VICE APP — BUILD PROGRESS
-Last updated: 2026-05-12
-Current phase: Phase 9 (Hardening + Store Audit Prep) — kicked off
+Last updated: 2026-05-15
+Current phase: Phase 9 (Hardening + Store Audit Prep) — in progress
+Phase 11 (Onboarding) SHIPPED ahead of schedule alongside age gate, username,
+  avatar upload, and a global safe-area pass.
 Phase 8 (UI overhaul + search/filter system): SHIPPED
 Phase 7 partial: OAuth (Apple/Google) still hidden; legacy /favorites unlinked
 
 PICK UP HERE NEXT SESSION
 ─────────────────────────
-Quick wins applied this round:
-  • RLS migration rls_optimize_auth_uid_subselect → all 13 policies rewritten
-    to (select auth.uid()). Performance advisor: 14 warnings → 0.
-  • places-proxy edge function v3 deployed (filters now live: openNow,
-    minRating, priceLevels in addition to radius).
-  • Pill rendering bug nailed: wrap visuals in inner View, not on Pressable
-    directly (Fabric clip-layer issue). Memory note saved.
+This round (2026-05-15) shipped:
+  • Onboarding flow: 4 screens (welcome → how-it-works → age → permissions),
+    gates on splash via useOnboarding hook (AsyncStorage flag mirrors
+    profiles.onboarding_completed).
+  • Age gate: profiles.birth_date column added; lib/age.ts with
+    AGE_THRESHOLD=21; alcohol+tobacco vices auto-hidden in catalog/recents
+    when user is under 21 or DOB unknown. 10 jest cases cover the helper.
+  • Username at signup: required, 3–20 chars [a-z0-9_], pre-flight uniqueness
+    check + unique-index guard.
+  • Avatar upload: expo-image-picker + expo-image-manipulator + Supabase
+    Storage bucket 'avatars' (5MB, public read, RLS scopes writes to
+    {userId}/*). Profile screen has avatar tap → action sheet (camera/library/
+    remove).
+  • Migration: add_birth_date_and_avatars_bucket applied (project ref
+    wuxdtsoihfcrtuxorzfz).
+  • Safe-area pass: new constants/layout.ts (MIN_TOUCH per platform,
+    bottomSafePadding/topSafePadding/edgeHorizontal helpers, tabBarHeight).
+    Tab bar now uses insets.bottom not Platform.OS branch — fixes unclickable
+    nav on Android gesture-nav devices. FiltersSheet header buttons bumped
+    to MIN_TOUCH; footer pads safe-area floor. Compass + sign-in + check-email
+    back buttons normalized.
+  • tsc clean, 58/58 jest green.
 
 Outstanding from Phase 9 audit, in priority order:
   1. Dashboard toggle: enable HaveIBeenPwned password protection
@@ -20,14 +37,18 @@ Outstanding from Phase 9 audit, in priority order:
   2. Real branded assets — current icon.png / splash-icon.png / adaptive-icon.png
      are Expo template placeholders. App Store will reject template assets.
   3. Privacy policy hosted at a public URL (required for store submission).
-  4. Age rating / content questionnaire (alcohol + tobacco vices → likely 17+).
+  4. Age rating / content questionnaire (now satisfied at the app level — but
+     Apple/Google forms still need filling; default 17+ given alcohol+tobacco).
   5. Sentry crash reporting wire-up.
   6. Stress tests: edge function rate-limit burst, bundle size baseline.
+  7. Real-device verification of the onboarding flow + avatar upload (Android
+     + iOS); permission denial path on the age screen post-COPPA block.
 
 Other lanes available when ready:
   • Phase 7 wrap: OAuth (Apple + Google), legacy /favorites disposition.
   • Phase 10: UI audit sweep (spacing/typography/contrast/a11y per screen).
-  • Phase 11: Onboarding (permission priming, calibration tip).
+  • Phase 11 remainder: calibration tip, permission re-priming on Loading
+    soft-deny, Settings entry to replay onboarding.
 
 ═══════════════════════════════════════
 PHASE 0 — PROJECT BOOTSTRAP

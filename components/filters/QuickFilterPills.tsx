@@ -43,6 +43,7 @@ export function QuickFilterPills({ onOpenOverlay }: Props) {
               accessibilityRole="button"
               accessibilityLabel={def.label}
               accessibilityState={{ selected: active }}
+              hitSlop={{ top: 8, bottom: 8, left: 0, right: 0 }}
               style={({ pressed }) => [styles.pillHit, pressed && { opacity: 0.7 }]}
             >
               <View style={[styles.pill, active && styles.pillActive]}>

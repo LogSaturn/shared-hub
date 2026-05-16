@@ -8,6 +8,7 @@ export interface Profile {
   username: string | null;
   display_name: string | null;
   avatar_url: string | null;
+  birth_date: string | null;
   units: 'mi' | 'km';
   onboarding_completed: boolean;
   entitlement: 'free' | 'premium';
@@ -22,11 +23,30 @@ export type ProfilePatch = Partial<
     | 'username'
     | 'display_name'
     | 'avatar_url'
+    | 'birth_date'
     | 'units'
     | 'onboarding_completed'
     | 'preferences'
   >
 >;
+
+// Cheap pre-flight to check whether a desired username is already taken.
+// Race-prone (another signup could grab it before our update lands), so the
+// real guard is the unique index — surface .code === '23505' from Postgres
+// as a friendly error in the caller.
+export async function isUsernameAvailable(
+  username: string,
+): Promise<ProfileResult<boolean>> {
+  const normalized = username.trim().toLowerCase();
+  if (!normalized) return { ok: true, data: false };
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('username', normalized)
+    .maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, data: data === null };
+}
 
 export type ProfileResult<T = void> =
   | { ok: true; data: T }

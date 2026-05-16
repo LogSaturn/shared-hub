@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS } from '../../constants';
+import { MIN_TOUCH } from '../../constants/layout';
 import { Label } from '../../components/ui';
 import { signInWithMagicLink } from '../../lib/auth';
 
@@ -90,7 +91,7 @@ const styles = StyleSheet.create({
   },
   backBtn: {
     minWidth: 64,
-    minHeight: 44,
+    minHeight: MIN_TOUCH,
     justifyContent: 'center',
   },
   back: {

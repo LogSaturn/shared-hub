@@ -9,3 +9,12 @@ export type { UseSessionResult } from './useSession';
 export { useFavorites } from './useFavorites';
 export type { UseFavoritesResult } from './useFavorites';
 export { useSessionSync } from './useSessionSync';
+export { useUserAge } from './useUserAge';
+export type { UseUserAgeResult } from './useUserAge';
+export {
+  useOnboarding,
+  markOnboardingComplete,
+  resetOnboarding,
+  ONBOARDING_COMPLETE_KEY,
+} from './useOnboarding';
+export type { UseOnboardingResult } from './useOnboarding';

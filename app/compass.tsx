@@ -9,6 +9,7 @@ import { useCompass } from '../hooks/useCompass';
 import { Label } from '../components/ui';
 import { NearbySheet, PlaceDetailSheet } from '../components/sheets';
 import { COLORS, TYPOGRAPHY, SPACING } from '../constants';
+import { MIN_TOUCH } from '../constants/layout';
 import { useAppStore } from '../store';
 import { formatDistance, bearingToCardinal } from '../lib/bearing';
 
@@ -44,7 +45,13 @@ export default function Compass() {
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.replace('/(tabs)')} hitSlop={12}>
+        <Pressable
+          onPress={() => router.replace('/(tabs)')}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="Restart"
+          style={styles.backBtn}
+        >
           <Text style={styles.back}>‹ Restart</Text>
         </Pressable>
 
@@ -59,6 +66,8 @@ export default function Compass() {
             nearbyRef.current?.present();
           }}
           hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="Show nearby places"
           style={styles.menuBtn}
         >
           <MaterialCommunityIcons name="menu" size={24} color={COLORS.fg} />
@@ -114,11 +123,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
     paddingTop: SPACING.md,
   },
+  backBtn: {
+    minWidth: 80,
+    minHeight: MIN_TOUCH,
+    justifyContent: 'center',
+  },
   back: {
     color: COLORS.muted40,
     fontFamily: TYPOGRAPHY.fontFamilyMedium,
     fontSize: 14,
-    minWidth: 64,
   },
   headerCenter: {
     alignItems: 'center',
@@ -130,9 +143,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   menuBtn: {
-    minWidth: 64,
+    minWidth: 80,
+    minHeight: MIN_TOUCH,
     alignItems: 'flex-end',
-    paddingVertical: 4,
+    justifyContent: 'center',
   },
   center: {
     flex: 1,

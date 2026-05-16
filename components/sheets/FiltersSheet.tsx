@@ -7,10 +7,16 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS } from '../../constants';
+import {
+  MIN_TOUCH,
+  bottomSafePadding,
+  topSafePadding,
+  edgeHorizontal,
+} from '../../constants/layout';
 import {
   PRICE_LEVELS,
   PRICE_LEVEL_LABELS,
@@ -35,6 +41,7 @@ interface Props {
 }
 
 export function FiltersSheet({ visible, onClose }: Props) {
+  const insets = useSafeAreaInsets();
   const pendingFilters = useAppStore((s) => s.pendingFilters);
   const activeSearch = useAppStore((s) => s.activeSearch);
   const lastUsedFilters = useAppStore((s) => s.lastUsedFilters);
@@ -88,11 +95,24 @@ export function FiltersSheet({ visible, onClose }: Props) {
       statusBarTranslucent
       onRequestClose={onClose}
     >
-      <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+      {/* Custom safe-area handling — full-screen modal under a translucent
+          status bar means we own the top inset; SafeAreaView edges=['top']
+          on Android can come back as 0 even when the status bar is visible.
+          topSafePadding clamps to a sensible floor so the close button is
+          never tucked under the clock. */}
+      <View
+        style={[
+          styles.root,
+          {
+            paddingTop: topSafePadding(insets, SPACING.xs),
+            paddingHorizontal: edgeHorizontal(insets) - SPACING.lg,
+          },
+        ]}
+      >
         <View style={styles.header}>
           <Pressable
             onPress={onClose}
-            hitSlop={16}
+            hitSlop={12}
             accessibilityRole="button"
             accessibilityLabel="Close filters"
             style={({ pressed }) => [styles.headerIconBtn, pressed && { opacity: 0.5 }]}
@@ -102,7 +122,7 @@ export function FiltersSheet({ visible, onClose }: Props) {
           <Text style={styles.headerTitle}>Filters</Text>
           <Pressable
             onPress={reset}
-            hitSlop={16}
+            hitSlop={12}
             accessibilityRole="button"
             accessibilityLabel="Reset filters"
             style={({ pressed }) => [styles.headerTextBtn, pressed && { opacity: 0.5 }]}
@@ -184,7 +204,12 @@ export function FiltersSheet({ visible, onClose }: Props) {
           </Section>
         </ScrollView>
 
-        <View style={styles.footer}>
+        <View
+          style={[
+            styles.footer,
+            { paddingBottom: bottomSafePadding(insets, SPACING.xs) },
+          ]}
+        >
           <Pressable
             onPress={saveOrClose}
             accessibilityRole="button"
@@ -200,7 +225,7 @@ export function FiltersSheet({ visible, onClose }: Props) {
             </Text>
           </Pressable>
         </View>
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 }
@@ -263,14 +288,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   headerIconBtn: {
-    width: 44,
-    height: 44,
+    width: MIN_TOUCH,
+    height: MIN_TOUCH,
     alignItems: 'flex-start',
     justifyContent: 'center',
   },
   headerTextBtn: {
     minWidth: 64,
-    minHeight: 44,
+    minHeight: MIN_TOUCH,
     alignItems: 'flex-end',
     justifyContent: 'center',
   },

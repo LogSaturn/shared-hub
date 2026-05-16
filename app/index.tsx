@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import { ViceNeedle } from '../components/compass';
 import { COLORS, TYPOGRAPHY, SPACING } from '../constants';
 import { useSession } from '../hooks/useSession';
+import { useOnboarding } from '../hooks/useOnboarding';
 import { useAppStore } from '../store';
 
 // Minimum time the splash stays visible. Without this, fast cold-boots flash
@@ -22,6 +23,7 @@ const MIN_VISIBLE_MS = 800;
 export default function Splash() {
   const router = useRouter();
   const { loading: sessionLoading } = useSession();
+  const { complete: onboardingComplete, loading: onboardingLoading } = useOnboarding();
 
   // Zustand persist hydration — gate navigation on it so /(tabs) reads a
   // populated store on first paint (recents, filters, etc.).
@@ -45,9 +47,9 @@ export default function Splash() {
   }, []);
 
   useEffect(() => {
-    if (sessionLoading || !hydrated || !minElapsed) return;
-    router.replace('/(tabs)');
-  }, [sessionLoading, hydrated, minElapsed, router]);
+    if (sessionLoading || onboardingLoading || !hydrated || !minElapsed) return;
+    router.replace(onboardingComplete ? '/(tabs)' : '/(onboarding)/welcome');
+  }, [sessionLoading, onboardingLoading, hydrated, minElapsed, onboardingComplete, router]);
 
   // Subtle pulse on the needle so the loading state reads as alive.
   const pulse = useSharedValue(0.55);

@@ -6,3 +6,5 @@ export * from './auth';
 export * from './profile';
 export * from './favorites';
 export * from './viceSearches';
+export * from './age';
+export * from './avatar';

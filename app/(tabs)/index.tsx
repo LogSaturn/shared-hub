@@ -20,8 +20,9 @@ import { FiltersSheet } from '../../components/sheets';
 import { useAppStore } from '../../store';
 import { Vice } from '../../types';
 import { logViceSearch } from '../../lib/viceSearches';
-import { useFavorites, useSession } from '../../hooks';
+import { useFavorites, useSession, useUserAge } from '../../hooks';
 import { viceToSnapshot } from '../../lib/favorites';
+import { filterVicesForAge } from '../../lib/age';
 
 export default function VicesTab() {
   const router = useRouter();
@@ -35,24 +36,32 @@ export default function VicesTab() {
   const openFilterOverlay = useAppStore((s) => s.openFilterOverlay);
   const { session } = useSession();
   const { isFavorited, toggle } = useFavorites();
+  const { age } = useUserAge();
 
   const [query, setQuery] = useState('');
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const trimmed = query.trim();
 
+  // The catalog is filtered before everything else so age-restricted vices
+  // never appear in browse, recents, or empty-state suggestions.
+  const visibleCatalog = useMemo(
+    () => filterVicesForAge(VICE_CATEGORIES, age),
+    [age],
+  );
+
   const recentVices = useMemo(
     () =>
       recentViceIds
-        .map((id) => VICE_CATEGORIES.find((v) => v.id === id))
+        .map((id) => visibleCatalog.find((v) => v.id === id))
         .filter((v): v is Vice => Boolean(v)),
-    [recentViceIds],
+    [recentViceIds, visibleCatalog],
   );
 
   const filtered = useMemo(() => {
-    if (!trimmed) return VICE_CATEGORIES;
+    if (!trimmed) return visibleCatalog;
     const q = trimmed.toLowerCase();
-    return VICE_CATEGORIES.filter((v) => v.label.toLowerCase().includes(q));
-  }, [trimmed]);
+    return visibleCatalog.filter((v) => v.label.toLowerCase().includes(q));
+  }, [trimmed, visibleCatalog]);
 
   const showRecentVices = !trimmed && recentVices.length > 0;
   const showRecentQueries = !trimmed && recentCustomQueries.length > 0;
