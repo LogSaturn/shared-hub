@@ -21,11 +21,15 @@ import * as Haptics from 'expo-haptics';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS } from '../../constants';
 import { VICE_CATEGORIES } from '../../constants/vices';
 import { Label } from '../../components/ui';
+import { ErrorBoundary } from '../../components/ui/ErrorBoundary';
 import { ViceLogChart } from '../../components/charts/ViceLogChart';
 import { useSession, useFavorites } from '../../hooks';
 import { signOut } from '../../lib/auth';
 import { getProfile, type Profile } from '../../lib/profile';
-import { pickAndUploadAvatar, removeAvatar, type AvatarSource } from '../../lib/avatar';
+// Lazy-required at call time to defer TurboModule binding until user actually
+// taps the avatar — avoids a hard native crash on APK builds where the
+// expo-image-picker plugin isn't yet in app.json.
+type AvatarSource = 'camera' | 'library';
 import { getViceSearchStats, type ViceSearchStats } from '../../lib/viceSearches';
 import {
   FavoriteRow,
@@ -119,7 +123,9 @@ export default function Profile() {
     setAvatarBusy(true);
     try {
       Haptics.selectionAsync().catch(() => {});
-      const r = action === 'remove' ? await removeAvatar() : await pickAndUploadAvatar(action);
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const avatarLib = require('../../lib/avatar') as typeof import('../../lib/avatar');
+      const r = action === 'remove' ? await avatarLib.removeAvatar() : await avatarLib.pickAndUploadAvatar(action);
       if (!r.ok) {
         if (r.error !== 'Cancelled.') Alert.alert('Could not update photo', r.error);
         return;
@@ -244,6 +250,7 @@ export default function Profile() {
   const displayName = profile?.display_name ?? profile?.username ?? user?.email ?? '—';
 
   return (
+    <ErrorBoundary fallbackLabel="Profile screen error">
     <View style={[styles.root, { paddingTop: insets.top }]}>
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <View style={styles.header}>
@@ -353,7 +360,9 @@ export default function Profile() {
               <ActivityIndicator color={GOLD} size="small" />
             </View>
           ) : (
-            <ViceLogChart logs={viceLogs} range={logsRange} />
+            <ErrorBoundary fallbackLabel="Chart error">
+              <ViceLogChart logs={viceLogs} range={logsRange} />
+            </ErrorBoundary>
           )}
         </View>
 
@@ -491,6 +500,7 @@ export default function Profile() {
         </KeyboardAvoidingView>
       </Modal>
     </View>
+    </ErrorBoundary>
   );
 }
 

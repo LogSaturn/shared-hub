@@ -31,13 +31,23 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
+        "ACCESS_FINE_LOCATION",
+        "CAMERA",
+        "READ_MEDIA_IMAGES",
+        "READ_EXTERNAL_STORAGE"
       ]
     },
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-updates"
+      "expo-updates",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Vice needs photo library access to update your profile picture.",
+          "cameraPermission": "Vice needs camera access to take a profile picture."
+        }
+      ]
     ],
     "updates": {
       "url": "https://u.expo.dev/07f1038b-528c-4d19-b078-3418f3732620"
