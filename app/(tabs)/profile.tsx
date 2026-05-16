@@ -402,7 +402,7 @@ export default function Profile() {
       {/* ── Log Vice Modal ─────────────────────────────────────────────── */}
       <Modal visible={showLogModal} animationType="slide" onRequestClose={() => setShowLogModal(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-          <View style={styles.modalRoot}>
+          <View style={[styles.modalRoot, { paddingTop: insets.top }]}>
             {/* Modal header */}
             <View style={styles.modalHeader}>
               <Pressable

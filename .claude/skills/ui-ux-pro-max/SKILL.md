@@ -246,6 +246,37 @@ This project's only stack. Key practices:
 - Respect `useSafeAreaInsets()` rather than hardcoded paddings
 - Use `accessibilityLabel`, `accessibilityRole`, `accessibilityState` for a11y
 
+## Safe Area Padding (Mobile — React Native)
+
+Safe areas must be respected on every screen and every modal. Never hardcode pixel values — use `useSafeAreaInsets()`.
+
+### Rules
+
+| Surface | What to apply | How |
+|---------|--------------|-----|
+| Full-screen / tab screen header | `paddingTop: insets.top` | On the outermost `View` or the header row |
+| Scroll content bottom | `paddingBottom: Math.max(insets.bottom, SPACING.lg)` | On `contentContainerStyle` |
+| Fixed bottom CTA / footer bar | `paddingBottom: insets.bottom` (or `Math.max(insets.bottom, SPACING.md)`) | On the container View |
+| `<Modal>` (any `animationType`) | `paddingTop: insets.top` on the modal root View | Modal does NOT inherit parent insets on Android |
+| Tab bar | Computed via `tabBarHeight(insets)` helper | See `constants/layout.ts` |
+
+### Key rules
+- `insets.top` covers the status bar (Android), notch, and Dynamic Island (iOS). **Always apply it to full-screen modal root views** — removing `presentationStyle="pageSheet"` for Android compatibility means iOS sheet auto-inset is gone too.
+- `insets.bottom` covers the home indicator (iPhone) and gesture bar (Android). Scroll views and bottom CTAs that don't respect it get clipped.
+- Never hardcode `paddingTop: 44` or `paddingTop: 24` — status bar height varies: 24–48dp on Android, 44–59pt on modern iPhones.
+- On Android API 35+ with `edgeToEdgeEnabled: true`, the window draws behind the system bars — insets are the only correct way to clear them.
+
+### Pattern (modal example)
+```tsx
+const insets = useSafeAreaInsets();
+// ...
+<Modal animationType="slide" ...>
+  <View style={[styles.modalRoot, { paddingTop: insets.top }]}>
+    {/* header with Cancel button now clears the status bar */}
+  </View>
+</Modal>
+```
+
 ## Project Conventions (vices)
 
 - Spacing tokens live in `constants/spacing.ts` (xs:4, sm:8, md:16, lg:24, xl:32, xxl:48, xxxl:64)
