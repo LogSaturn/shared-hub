@@ -88,8 +88,8 @@ export default function Profile() {
   useEffect(() => {
     if (!session) return;
     let cancelled = false;
-    getProfile().then((r) => { if (!cancelled && r.ok) setProfile(r.data); });
-    getViceSearchStats().then((r) => { if (!cancelled && r.ok) setStats(r.data); });
+    getProfile().then((r) => { if (!cancelled && r.ok) setProfile(r.data); }).catch(() => {});
+    getViceSearchStats().then((r) => { if (!cancelled && r.ok) setStats(r.data); }).catch(() => {});
     return () => { cancelled = true; };
   }, [session, favorites.size]);
 
@@ -99,7 +99,7 @@ export default function Profile() {
     getViceLogs(logsRange).then((r) => {
       if (r.ok) setViceLogs(r.data);
       setLogsLoading(false);
-    });
+    }).catch(() => { setLogsLoading(false); });
   }, [session, logsRange]);
 
   const { placeRows, viceRows } = useMemo(() => {
@@ -184,7 +184,7 @@ export default function Profile() {
     setQuantity(1);
 
     // Refresh chart data
-    getViceLogs(logsRange).then((res) => { if (res.ok) setViceLogs(res.data); });
+    getViceLogs(logsRange).then((res) => { if (res.ok) setViceLogs(res.data); }).catch(() => {});
   }
 
   function pickPlace(row: FavoriteRow) {
@@ -391,7 +391,7 @@ export default function Profile() {
       </ScrollView>
 
       {/* ── Log Vice Modal ─────────────────────────────────────────────── */}
-      <Modal visible={showLogModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowLogModal(false)}>
+      <Modal visible={showLogModal} animationType="slide" onRequestClose={() => setShowLogModal(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <View style={styles.modalRoot}>
             {/* Modal header */}

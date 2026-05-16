@@ -9,7 +9,7 @@ import Svg, {
   LinearGradient,
   Stop,
 } from 'react-native-svg';
-import { COLORS, TYPOGRAPHY, SPACING } from '../../constants';
+import { COLORS, SPACING, TYPOGRAPHY } from '../../constants';
 import type { ViceLog, TimeRange } from '../../lib/viceLogs';
 
 const CHART_COLORS = [
@@ -221,28 +221,33 @@ export function ViceLogChart({ logs, range }: Props) {
             {/* Horizontal grid lines */}
             {Array.from({ length: GRID_LINES }, (_, i) => {
               const y = PAD.top + (i / (GRID_LINES - 1)) * innerH;
+              return (
+                <Line
+                  key={`grid-${i}`}
+                  x1={PAD.left}
+                  y1={y}
+                  x2={PAD.left + innerW}
+                  y2={y}
+                  stroke="rgba(255,255,255,0.07)"
+                  strokeWidth={1}
+                />
+              );
+            })}
+            {/* Grid Y-axis labels */}
+            {Array.from({ length: GRID_LINES }, (_, i) => {
+              const y = PAD.top + (i / (GRID_LINES - 1)) * innerH;
               const val = maxVal - (maxVal / (GRID_LINES - 1)) * i;
               return (
-                <React.Fragment key={i}>
-                  <Line
-                    x1={PAD.left}
-                    y1={y}
-                    x2={PAD.left + innerW}
-                    y2={y}
-                    stroke="rgba(255,255,255,0.07)"
-                    strokeWidth={1}
-                  />
-                  <SvgText
-                    x={PAD.left - 6}
-                    y={y + 4}
-                    fontSize={9}
-                    fill="rgba(245,235,220,0.4)"
-                    textAnchor="end"
-                    fontFamily={TYPOGRAPHY.fontFamily}
-                  >
-                    {Math.round(val)}
-                  </SvgText>
-                </React.Fragment>
+                <SvgText
+                  key={`ylabel-${i}`}
+                  x={PAD.left - 6}
+                  y={y + 4}
+                  fontSize={9}
+                  fill="rgba(245,235,220,0.4)"
+                  textAnchor="end"
+                >
+                  {Math.round(val)}
+                </SvgText>
               );
             })}
 
@@ -260,7 +265,6 @@ export function ViceLogChart({ logs, range }: Props) {
                   fontSize={9}
                   fill="rgba(245,235,220,0.4)"
                   textAnchor="middle"
-                  fontFamily={TYPOGRAPHY.fontFamily}
                 >
                   {b.label}
                 </SvgText>
