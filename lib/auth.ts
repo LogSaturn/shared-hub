@@ -74,6 +74,21 @@ export async function signInWithIdToken(
   return { ok: true, data: data.session };
 }
 
+export async function updateEmail(newEmail: string): Promise<AuthResult> {
+  const { error } = await supabase.auth.updateUser(
+    { email: newEmail.trim() },
+    { emailRedirectTo: authRedirectUrl() },
+  );
+  if (error) return failed(error, 'Could not update email.');
+  return { ok: true, data: undefined };
+}
+
+export async function updatePassword(newPassword: string): Promise<AuthResult> {
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) return failed(error, 'Could not update password.');
+  return { ok: true, data: undefined };
+}
+
 export async function signOut(): Promise<AuthResult> {
   const { error } = await supabase.auth.signOut();
   if (error) return failed(error, 'Could not sign out.');

@@ -155,6 +155,7 @@ Public schema, all under RLS using the subselect form `(select auth.uid()) = use
 - `profiles` — auto-created on signup. Typed columns for indexed fields (`username`, `units`, `entitlement`, `onboarding_completed`); `preferences jsonb` for everything personalized.
 - `favorites` — `kind in ('place','vice')` discriminator, `ref_id`, `snapshot jsonb`. Unique per (user, kind, ref).
 - `vice_searches` — append-only search log; powers "recents" and dashboard stats.
+- `vice_logs` — append-only indulgence log. `vice_id`, `vice_label`, `vice_icon`, `quantity`, `logged_at`. Queried with time-range filters (WTD/MTD/YTD/All) to power the Account tab chart. Migration SQL: `supabase-vice-logs.sql`.
 - `saved_searches` — scaffolded for the future widget / saved-search UI. Stores a serialized `SearchConfig` (jsonb) plus `position` and `last_used_at`.
 
 ## Roadmap
@@ -165,7 +166,7 @@ See `progress.txt` for the full phase list — also has a "PICK UP HERE NEXT SES
 - Phase 7 ✅ (partial) — auth, favorites, account dashboard. OAuth still hidden.
 - Phase 8 ✅ — UI overhaul: bottom tabs, enhanced search, filter system, splash rework
 - Phase 9 — Hardening + store audit prep (in progress: RLS optimized, awaiting assets/privacy policy/age rating)
-- Phase 10 — UI audit / fixes
-- Phase 11 — Onboarding / UX walkthrough
+- Phase 10 ✅ — UI audit / fixes; settings screen; username/avatar display
+- Phase 11 ✅ — Onboarding flow (4 slides); Log a Vice feature; vice history chart
 - Phase 12 — Play Store + App Store submission
 - Phase 13 — Ads + paywall

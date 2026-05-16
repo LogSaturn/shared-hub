@@ -1,13 +1,34 @@
 VICE APP — BUILD PROGRESS
-Last updated: 2026-05-15
-Current phase: Phase 9 (Hardening + Store Audit Prep) — in progress
-Phase 11 (Onboarding) SHIPPED ahead of schedule alongside age gate, username,
-  avatar upload, and a global safe-area pass.
+Last updated: 2026-05-16
+Current phase: Phase 11 (Onboarding + Log a Vice) — SHIPPED
+Phase 10 (UI audit / fixes): SHIPPED
 Phase 8 (UI overhaul + search/filter system): SHIPPED
 Phase 7 partial: OAuth (Apple/Google) still hidden; legacy /favorites unlinked
 
 PICK UP HERE NEXT SESSION
 ─────────────────────────
+This round (2026-05-16) shipped:
+  • Log a Vice feature: full-width CTA on Account tab, modal with 2-col vice
+    grid (TouchableOpacity, gold-border selection, icon+label horizontal cards),
+    quantity stepper, gold submit button. Logs stored in public.vice_logs
+    (migration SQL: supabase-vice-logs.sql).
+  • Vice History chart: SVG line chart via react-native-svg with smooth
+    Catmull-Rom bezier curves, gradient area fills under each line, dot markers
+    at data points, color-coded legend. Time-range pills: WTD / MTD / YTD / All.
+  • Profile page overhaul: @username displayed below display name; Distance
+    stat card replaced with Log a Vice button; chart section sits between stats
+    and favorites tabs.
+  • Settings screen (app/settings.tsx): edit display name, username, units
+    toggle (mi/km synced to Zustand + DB), change email (confirmation flow),
+    change password (eye-toggle, mismatch guard). Gear icon on Account header.
+  • Onboarding: 4th slide added ("Log your indulgences") explaining the
+    vice-logging feature. TOTAL bumped 3 → 4; nextLabels updated.
+  • lib/viceLogs.ts: addViceLog, getViceLogs (WTD/MTD/YTD/All filter),
+    deleteViceLog. Barrel-exported from lib/index.ts.
+  • components/charts/ViceLogChart.tsx: responsive onLayout-driven SVG chart.
+  • tsc clean throughout.
+
+
 This round (2026-05-15) shipped:
   • Onboarding flow: 4 screens (welcome → how-it-works → age → permissions),
     gates on splash via useOnboarding hook (AsyncStorage flag mirrors

@@ -48,7 +48,7 @@ export default function Splash() {
 
   useEffect(() => {
     if (sessionLoading || onboardingLoading || !hydrated || !minElapsed) return;
-    router.replace(onboardingComplete ? '/(tabs)' : '/(onboarding)/welcome');
+    router.replace(onboardingComplete ? '/(tabs)' : '/(onboarding)');
   }, [sessionLoading, onboardingLoading, hydrated, minElapsed, onboardingComplete, router]);
 
   // Subtle pulse on the needle so the loading state reads as alive.

@@ -8,3 +8,4 @@ export * from './favorites';
 export * from './viceSearches';
 export * from './age';
 export * from './avatar';
+export * from './viceLogs';

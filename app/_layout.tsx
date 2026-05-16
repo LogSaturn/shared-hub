@@ -71,6 +71,7 @@ export default function RootLayout() {
             <Stack.Screen name="loading" />
             <Stack.Screen name="compass" />
             <Stack.Screen name="favorites" />
+            <Stack.Screen name="settings" />
             <Stack.Screen name="(auth)" />
           </Stack>
         </BottomSheetModalProvider>

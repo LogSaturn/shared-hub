@@ -173,7 +173,7 @@ export default function SignIn() {
       >
         <View style={styles.header}>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')}
             hitSlop={16}
             accessibilityRole="button"
             accessibilityLabel="Go back"

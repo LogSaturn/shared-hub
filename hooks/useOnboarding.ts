@@ -15,7 +15,7 @@ export interface UseOnboardingResult {
 // falls back to profiles.onboarding_completed for signed-in users.
 //
 // Mark complete via markOnboardingComplete(); the splash watches this hook
-// and routes to /(onboarding)/welcome when it returns false.
+// and routes to /(onboarding) when it returns false.
 export function useOnboarding(): UseOnboardingResult {
   const { session, loading: sessionLoading } = useSession();
   const [complete, setComplete] = useState(false);

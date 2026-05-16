@@ -136,7 +136,20 @@ export default function VicesTab() {
         keyboardDismissMode="on-drag"
       >
         <View style={styles.header}>
+          <View style={styles.headerSpacer} />
           <Label>Vices</Label>
+          <Pressable
+            onPress={() => {
+              Haptics.selectionAsync().catch(() => {});
+              router.push('/(onboarding)');
+            }}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Help"
+            style={({ pressed }) => [styles.helpBtn, pressed && { opacity: 0.5 }]}
+          >
+            <Text style={styles.helpText}>Help?</Text>
+          </Pressable>
         </View>
 
         <Text style={styles.heading}>What are you{'\n'}craving?</Text>
@@ -324,8 +337,24 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xxl,
   },
   header: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingVertical: SPACING.sm,
+  },
+  headerSpacer: {
+    width: 48,
+  },
+  helpBtn: {
+    width: 48,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    minHeight: 36,
+  },
+  helpText: {
+    color: COLORS.gold,
+    fontFamily: TYPOGRAPHY.fontFamilyMedium,
+    fontSize: 14,
   },
   heading: {
     color: COLORS.fg,
