@@ -35,6 +35,7 @@ export const TYPOGRAPHY = {
   fontFamilyMedium: 'Inter_500Medium',
   fontFamilySemiBold: 'Inter_600SemiBold',
   fontFamilyBold: 'Inter_700Bold',
+  fontFamilyDisplay: 'PlayfairDisplay_500Medium_Italic',
 
   trackingWide: 2.5,
 } as const;

@@ -95,6 +95,25 @@ export async function signOut(): Promise<AuthResult> {
   return { ok: true, data: undefined };
 }
 
+export async function deleteAccount(): Promise<AuthResult> {
+  // Remove avatar files from storage before nuking the auth row.
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    const { data: files } = await supabase.storage
+      .from('avatars')
+      .list(user.id);
+    if (files && files.length > 0) {
+      const paths = files.map((f) => `${user.id}/${f.name}`);
+      await supabase.storage.from('avatars').remove(paths).catch(() => {});
+    }
+  }
+  // delete_account() is a SECURITY DEFINER RPC that removes all user rows
+  // then deletes from auth.users, which invalidates the session.
+  const { error } = await supabase.rpc('delete_account');
+  if (error) return { ok: false, error: error.message ?? 'Could not delete account.' };
+  return { ok: true, data: undefined };
+}
+
 export async function getSession(): Promise<Session | null> {
   const { data } = await supabase.auth.getSession();
   return data.session;

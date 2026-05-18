@@ -207,23 +207,29 @@ export function FiltersSheet({ visible, onClose }: Props) {
         <View
           style={[
             styles.footer,
-            { paddingBottom: bottomSafePadding(insets, SPACING.xs) },
+            { paddingBottom: bottomSafePadding(insets, SPACING.sm) },
           ]}
         >
-          <Pressable
-            onPress={saveOrClose}
-            accessibilityRole="button"
-            accessibilityLabel={dirty ? 'Save filters' : 'Close filters'}
-            style={({ pressed }) => [
-              styles.ctaBtn,
-              dirty ? styles.ctaBtnFilled : styles.ctaBtnOutlined,
-              pressed && { opacity: 0.85 },
-            ]}
-          >
-            <Text style={[styles.ctaText, dirty ? styles.ctaTextFilled : styles.ctaTextOutlined]}>
-              {dirty ? 'Save filters' : 'Close filters'}
-            </Text>
-          </Pressable>
+          {dirty ? (
+            <Pressable
+              onPress={saveOrClose}
+              accessibilityRole="button"
+              accessibilityLabel="Save filters"
+              style={({ pressed }) => [styles.saveBtn, pressed && { opacity: 0.88 }]}
+            >
+              <MaterialCommunityIcons name="check" size={22} color={COLORS.bg} />
+              <Text style={styles.saveBtnText}>Save Filters</Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="Close filters"
+              style={({ pressed }) => [styles.doneBtn, pressed && { opacity: 0.6 }]}
+            >
+              <Text style={styles.doneBtnText}>Done</Text>
+            </Pressable>
+          )}
         </View>
       </View>
     </Modal>
@@ -387,36 +393,35 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: SPACING.lg,
     paddingTop: SPACING.md,
-    paddingBottom: SPACING.xs,
     borderTopColor: COLORS.border10,
     borderTopWidth: 1,
   },
-  ctaBtn: {
-    borderRadius: 27,
-    paddingVertical: SPACING.md,
+  // Big gold save button — only shown when filters are dirty
+  saveBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 54,
-  },
-  ctaBtnFilled: {
+    gap: SPACING.sm,
     backgroundColor: COLORS.gold,
-    borderWidth: STROKE_W,
-    borderColor: COLORS.gold,
+    borderRadius: RADIUS.md,
+    height: 58,
   },
-  ctaBtnOutlined: {
-    backgroundColor: COLORS.bg,
-    borderWidth: STROKE_W,
-    borderColor: STROKE_COLOR,
-  },
-  ctaText: {
-    fontFamily: TYPOGRAPHY.fontFamilySemiBold,
-    fontSize: 16,
-    letterSpacing: 0.3,
-  },
-  ctaTextFilled: {
+  saveBtnText: {
     color: COLORS.bg,
+    fontFamily: TYPOGRAPHY.fontFamilySemiBold,
+    fontSize: 17,
+    letterSpacing: 0.2,
   },
-  ctaTextOutlined: {
-    color: COLORS.gold,
+  // Simple done link — shown when nothing has changed
+  doneBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 52,
+  },
+  doneBtnText: {
+    color: COLORS.muted70,
+    fontFamily: TYPOGRAPHY.fontFamilyMedium,
+    fontSize: 15,
+    letterSpacing: 0.2,
   },
 });

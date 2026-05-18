@@ -40,6 +40,8 @@ export default function Splash() {
     return unsub;
   }, []);
 
+  const profileReady = useAppStore((s) => s.profileReady);
+
   const [minElapsed, setMinElapsed] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setMinElapsed(true), MIN_VISIBLE_MS);
@@ -47,9 +49,9 @@ export default function Splash() {
   }, []);
 
   useEffect(() => {
-    if (sessionLoading || onboardingLoading || !hydrated || !minElapsed) return;
+    if (sessionLoading || onboardingLoading || !hydrated || !minElapsed || !profileReady) return;
     router.replace(onboardingComplete ? '/(tabs)' : '/(onboarding)');
-  }, [sessionLoading, onboardingLoading, hydrated, minElapsed, onboardingComplete, router]);
+  }, [sessionLoading, onboardingLoading, hydrated, minElapsed, profileReady, onboardingComplete, router]);
 
   // Subtle pulse on the needle so the loading state reads as alive.
   const pulse = useSharedValue(0.55);

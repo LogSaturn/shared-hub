@@ -1,12 +1,54 @@
 VICE APP — BUILD PROGRESS
-Last updated: 2026-05-16
-Current phase: Phase 11 (Onboarding + Log a Vice) — SHIPPED
-Phase 10 (UI audit / fixes): SHIPPED
-Phase 8 (UI overhaul + search/filter system): SHIPPED
-Phase 7 partial: OAuth (Apple/Google) still hidden; legacy /favorites unlinked
+Last updated: 2026-05-17
+Current phase: Store compliance audit + hardening — IN PROGRESS
 
 PICK UP HERE NEXT SESSION
 ─────────────────────────
+This round (2026-05-17) shipped:
+  • Branded assets: icon.png (1024x1024 RGB, no alpha), splash-icon.png
+    (1284x2778), adaptive-icon.png replaced with gold V on #1c1713 background.
+  • Privacy policy: written + hosted at https://sirhobby.github.io/vice-privacy/
+    Repo: github.com/SirHobby/vice-privacy (public). legal/privacy.html in project.
+    privacyPolicyUrl added to app.json.
+  • Terms of Service: written + hosted at
+    https://sirhobby.github.io/vice-privacy/terms.html. legal/terms.html in project.
+  • Account deletion: delete_account() Supabase RPC (SECURITY DEFINER, wipes
+    vice_logs / favorites / vice_searches / saved_searches / profiles / auth.users
+    + avatar Storage files). deleteAccount() in lib/auth.ts. "Delete Account"
+    destructive button in Settings with two-step Alert confirmation. store.reset()
+    clears local state on deletion.
+  • Legal section in Settings: Privacy Policy + Terms of Service rows open
+    respective URLs via Linking.openURL.
+  • Data disclosure: onboarding permissions slide (slide 3) now discloses what
+    Vice stores (logs, history, favourites) with tappable ToS + Privacy Policy links.
+  • Sentry: @sentry/react-native 8.11.1 installed. Plugin added to app.json
+    (org: logsaturn, project: vice). Sentry.init() in _layout.tsx (disabled in
+    __DEV__, tracesSampleRate: 0.2). RootLayout wrapped with Sentry.wrap() +
+    TouchEventBoundary. DSN placeholder in .env: EXPO_PUBLIC_SENTRY_DSN=
+  • Migration SQL: supabase-delete-account.sql (applied to wuxdtsoihfcrtuxorzfz).
+  • tsc clean throughout.
+
+  Outstanding / next:
+  1. HaveIBeenPwned — requires Supabase Pro plan, skip for now.
+  2. ✅ Branded assets
+  3. ✅ Privacy policy
+  4. Age rating questionnaire — blocked on Apple Dev ($99) + Google Play ($25) enrollment.
+  5. ✅ Sentry wired (add DSN once sentry.io project created)
+  6. Stress tests: edge function rate-limit burst (35 req/60s), bundle size baseline.
+  7. Real-device verification: onboarding + avatar upload (Android + iOS).
+
+  Store compliance audit findings (2026-05-17):
+  FIXED:
+    ✅ Account deletion (Apple Guideline 5.1.1(v)) — in-app, no external step needed
+    ✅ Privacy policy not shown in-app — Legal section in Settings
+    ✅ Terms of Service missing — written + linked
+    ✅ Data collection disclosure — onboarding last slide
+  REMAINING:
+    • Age rating questionnaire — blocked on developer account enrollment
+    • Sign in with Apple — required only when Google OAuth is enabled (not yet)
+    • Avatar content moderation — support email is sufficient for low-risk profile photos
+    • Apple App Privacy Details / Google Data Safety form — filled at submission time
+
 This round (2026-05-16) shipped:
   • Log a Vice feature: full-width CTA on Account tab, modal with 2-col vice
     grid (TouchableOpacity, gold-border selection, icon+label horizontal cards),

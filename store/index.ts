@@ -103,6 +103,20 @@ export const useAppStore = create<AppState>()(
 
       units: 'mi',
       setUnits: (units) => set({ units }),
+
+      cachedProfile: null,
+      setCachedProfile: (profile) => set({ cachedProfile: profile }),
+      profileReady: false,
+      setProfileReady: (ready) => set({ profileReady: ready }),
+
+      reset: () => set({
+        activeSearch: null,
+        recentViceIds: [],
+        recentCustomQueries: [],
+        places: [],
+        targetPlace: null,
+        userLocation: null,
+      }),
     }),
     {
       name: 'vice-storage',

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,8 +14,10 @@ import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS } from '../../constants';
+import { MIN_TOUCH } from '../../constants/layout';
 import { VICE_CATEGORIES } from '../../constants/vices';
 import { Label } from '../../components/ui';
+import { ViceNeedle } from '../../components/compass';
 import { QuickFilterPills } from '../../components/filters';
 import { FiltersSheet } from '../../components/sheets';
 import { useAppStore } from '../../store';
@@ -23,6 +26,68 @@ import { logViceSearch } from '../../lib/viceSearches';
 import { useFavorites, useSession, useUserAge } from '../../hooks';
 import { viceToSnapshot } from '../../lib/favorites';
 import { filterVicesForAge } from '../../lib/age';
+import { getProfile } from '../../lib/profile';
+
+// ─── Rotating titles ──────────────────────────────────────────────────────────
+
+type TitleDef = { lines: string[]; fontSize: number; lineHeight: number };
+
+// Maps longest-line character count to a display font size that keeps every
+// title readable without overflow on a ~340px content column.
+function sizeForTitle(lines: string[], nameEst = 0): TitleDef {
+  const longest = Math.max(
+    ...lines.map((l) => l.replace('{name}', 'x'.repeat(nameEst)).length),
+  );
+  let fontSize: number;
+  if (longest <= 8)       fontSize = 66;
+  else if (longest <= 11) fontSize = 58;
+  else if (longest <= 14) fontSize = 52;
+  else if (longest <= 18) fontSize = 46;
+  else                    fontSize = 40;
+  return { lines, fontSize, lineHeight: Math.ceil(fontSize * 1.38) };
+}
+
+// prettier-ignore
+const TITLES_ANON: TitleDef[] = [
+  sizeForTitle(['What are you',     "cravin'?"]),           // 12 → 40
+  sizeForTitle(["What's your fix",  'tonight?']),           // 15 → 34
+  sizeForTitle(['Time to',          'indulge.']),            //  8 → 54
+  sizeForTitle(['What vice',        'today?']),              //  9 → 46
+  sizeForTitle(['Follow your',      'cravings.']),           // 11 → 46
+  sizeForTitle(['What are you',     'feeling?']),            // 12 → 40
+  sizeForTitle(['Point me at',      'something good.']),     // 15 → 34
+  sizeForTitle(['Ready to',         'find it?']),            //  8 → 54
+  sizeForTitle(['What are you',     'hungry for?']),         // 12 → 40
+  sizeForTitle(['Where to',         'next?']),               //  8 → 54
+  sizeForTitle(['Name your',        'vice.']),               //  9 → 46
+  sizeForTitle(["What's calling",   'your name?']),          // 14 → 40
+  sizeForTitle(['Feeling something?',"Let's find it."]),     // 18 → 34
+  sizeForTitle(['Your compass',     'awaits.']),             // 12 → 40
+  sizeForTitle(['Something is',     'calling.']),            // 12 → 40
+];
+
+// User titles are sized with a nameEst=8 (covers typical usernames). At
+// runtime {name} is replaced with the actual username before rendering.
+// prettier-ignore
+const TITLES_USER: TitleDef[] = [
+  sizeForTitle(['What are you',       "cravin', {name}?"],    8), // 18 → 34
+  sizeForTitle(['Your call,',         '{name}.'],              8), // 10 → 46
+  sizeForTitle(['Ready when',         'you are, {name}.'],    8), // 18 → 34
+  sizeForTitle(["What's the vice",    'tonight, {name}?'],    8), // 18 → 34
+  sizeForTitle(['Where to,',          '{name}?'],              8), //  9 → 46
+  sizeForTitle(['Name it,',           '{name}.'],              8), //  9 → 46
+  sizeForTitle(['What are you',       "itchin' for, {name}?"],8), // 22 → 30
+  sizeForTitle(['Your fix',           'awaits, {name}.'],     8), // 17 → 34
+  sizeForTitle(['What vice',          'today, {name}?'],      8), // 16 → 34
+  sizeForTitle(['Point the needle,',  '{name}.'],              8), // 17 → 34
+  sizeForTitle(['What are you',       'feeling, {name}?'],    8), // 18 → 34
+  sizeForTitle(['Good to see',        'you, {name}.'],        8), // 14 → 40
+  sizeForTitle(['The compass is',     'ready, {name}.'],      8), // 14 → 40
+  sizeForTitle(['Follow your',        'cravings, {name}.'],   8), // 19 → 30
+  sizeForTitle(["Something's calling",'your name, {name}.'],  8), // 19 → 30
+];
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function VicesTab() {
   const router = useRouter();
@@ -38,12 +103,51 @@ export default function VicesTab() {
   const { isFavorited, toggle } = useFavorites();
   const { age } = useUserAge();
 
+  const cachedProfile = useAppStore((s) => s.cachedProfile);
+
   const [query, setQuery] = useState('');
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+
+  // Display name is read from the prefetched profile cache. Falls back to a
+  // live fetch only when the cache is empty (e.g. deep-link or dev hot-reload).
+  // display_name takes priority; username is the fallback.
+  function nameFromProfile(p: { display_name: string | null; username: string | null } | null) {
+    if (!p) return null;
+    return p.display_name ?? p.username ?? null;
+  }
+
+  const [displayName, setDisplayName] = useState<string | null>(
+    nameFromProfile(cachedProfile),
+  );
+
+  // Pick a title index once per mount — changes on every screen remount.
+  const [titleIdx] = useState(() => Math.floor(Math.random() * TITLES_ANON.length));
+
+  useEffect(() => {
+    if (cachedProfile !== null) {
+      setDisplayName(nameFromProfile(cachedProfile));
+      return;
+    }
+    if (!session) { setDisplayName(null); return; }
+    let cancelled = false;
+    getProfile().then((r) => {
+      if (!cancelled && r.ok) setDisplayName(nameFromProfile(r.data));
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [session, cachedProfile]);
+
+  const titleDef = displayName ? TITLES_USER[titleIdx] : TITLES_ANON[titleIdx];
+
+  const headingText = useMemo(
+    () =>
+      titleDef.lines
+        .map((l) => (displayName ? l.replace('{name}', displayName) : l))
+        .join('\n'),
+    [titleDef, displayName],
+  );
+
   const trimmed = query.trim();
 
-  // The catalog is filtered before everything else so age-restricted vices
-  // never appear in browse, recents, or empty-state suggestions.
   const visibleCatalog = useMemo(
     () => filterVicesForAge(VICE_CATEGORIES, age),
     [age],
@@ -53,7 +157,8 @@ export default function VicesTab() {
     () =>
       recentViceIds
         .map((id) => visibleCatalog.find((v) => v.id === id))
-        .filter((v): v is Vice => Boolean(v)),
+        .filter((v): v is Vice => Boolean(v))
+        .slice(0, 3),
     [recentViceIds, visibleCatalog],
   );
 
@@ -70,7 +175,7 @@ export default function VicesTab() {
     if (!session) {
       Alert.alert(
         'Sign in to save',
-        'Create an account to save your favorite vices.',
+        'Create an account to save your favourite vices.',
         [
           { text: 'Not now', style: 'cancel' },
           { text: 'Sign in', onPress: () => router.push('/profile') },
@@ -90,9 +195,7 @@ export default function VicesTab() {
     logViceSearch({
       viceId: vice.id,
       query: null,
-      location: userLocation
-        ? { lat: userLocation.lat, lng: userLocation.lng }
-        : null,
+      location: userLocation ? { lat: userLocation.lat, lng: userLocation.lng } : null,
     }).catch(() => {});
     router.push('/loading');
   }
@@ -106,9 +209,7 @@ export default function VicesTab() {
     logViceSearch({
       viceId: 'custom',
       query: text,
-      location: userLocation
-        ? { lat: userLocation.lat, lng: userLocation.lng }
-        : null,
+      location: userLocation ? { lat: userLocation.lat, lng: userLocation.lng } : null,
     }).catch(() => {});
     router.push('/loading');
   }
@@ -130,65 +231,81 @@ export default function VicesTab() {
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
+      {/* ── Fixed header ─────────────────────────────────────────────── */}
+      <View style={styles.header}>
+        <View style={styles.headerSpacer} />
+        <ViceNeedle size={28} orientation="logo" accent={COLORS.gold} />
+        <TouchableOpacity
+          onPress={() => {
+            Haptics.selectionAsync().catch(() => {});
+            router.push('/(onboarding)');
+          }}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel="Help"
+          style={styles.helpBtn}
+        >
+          <Text style={styles.helpText}>Help?</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* ── Scrollable body ─────────────────────────────────────────── */}
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
+        showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <View style={styles.headerSpacer} />
-          <Label>Vices</Label>
-          <Pressable
-            onPress={() => {
-              Haptics.selectionAsync().catch(() => {});
-              router.push('/(onboarding)');
-            }}
-            hitSlop={12}
-            accessibilityRole="button"
-            accessibilityLabel="Help"
-            style={({ pressed }) => [styles.helpBtn, pressed && { opacity: 0.5 }]}
+        {/* Hero: title + search — pushed toward vertical center */}
+        <View style={styles.hero}>
+          <Text
+            style={[
+              styles.heading,
+              { fontSize: titleDef.fontSize, lineHeight: titleDef.lineHeight },
+            ]}
+            adjustsFontSizeToFit
+            numberOfLines={3}
           >
-            <Text style={styles.helpText}>Help?</Text>
-          </Pressable>
+            {headingText}
+          </Text>
+
+          <View style={styles.searchBar}>
+            <MaterialCommunityIcons name="magnify" size={20} color={COLORS.muted55} />
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              onSubmitEditing={submitQuery}
+              placeholder="Search vices or type anything…"
+              placeholderTextColor={COLORS.muted55}
+              returnKeyType="search"
+              autoCorrect={false}
+              autoCapitalize="none"
+              accessibilityLabel="Search vices"
+              style={styles.searchInput}
+            />
+            {query.length > 0 && (
+              <Pressable
+                onPress={() => setQuery('')}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="Clear search"
+                style={({ pressed }) => pressed && { opacity: 0.5 }}
+              >
+                <MaterialCommunityIcons name="close-circle" size={18} color={COLORS.muted55} />
+              </Pressable>
+            )}
+          </View>
+
+          <Text style={styles.tip}>
+            Tip: using a category gives you better tracking and results.
+          </Text>
+
+          <View style={styles.pillsWrap}>
+            <QuickFilterPills onOpenOverlay={openFilters} />
+          </View>
         </View>
 
-        <Text style={styles.heading}>What are you{'\n'}craving?</Text>
-
-        <View style={styles.searchBar}>
-          <MaterialCommunityIcons name="magnify" size={20} color={COLORS.muted55} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            onSubmitEditing={submitQuery}
-            placeholder="Search vices or type anything…"
-            placeholderTextColor={COLORS.muted55}
-            returnKeyType="search"
-            autoCorrect={false}
-            autoCapitalize="none"
-            accessibilityLabel="Search vices"
-            style={styles.searchInput}
-          />
-          {query.length > 0 && (
-            <Pressable
-              onPress={() => setQuery('')}
-              hitSlop={12}
-              accessibilityRole="button"
-              accessibilityLabel="Clear search"
-              style={({ pressed }) => pressed && { opacity: 0.5 }}
-            >
-              <MaterialCommunityIcons name="close-circle" size={18} color={COLORS.muted55} />
-            </Pressable>
-          )}
-        </View>
-
-        <Text style={styles.tip}>
-          Tip: using a category gives you better tracking and results.
-        </Text>
-
-        <View style={styles.pillsWrap}>
-          <QuickFilterPills onOpenOverlay={openFilters} />
-        </View>
-
+        {/* ── Recent vices (max 3) ──────────────────────────────────── */}
         {showRecentVices && (
           <View style={styles.section}>
             <Label style={styles.sectionLabel}>Recent vices</Label>
@@ -204,6 +321,7 @@ export default function VicesTab() {
           </View>
         )}
 
+        {/* ── Recent searches ───────────────────────────────────────── */}
         {showRecentQueries && (
           <View style={styles.section}>
             <Label style={styles.sectionLabel}>Recent searches</Label>
@@ -218,15 +336,14 @@ export default function VicesTab() {
                 <View style={styles.queryIcon}>
                   <MaterialCommunityIcons name="history" size={20} color={COLORS.muted70} />
                 </View>
-                <Text style={styles.queryText} numberOfLines={1}>
-                  {q}
-                </Text>
+                <Text style={styles.queryText} numberOfLines={1}>{q}</Text>
                 <MaterialCommunityIcons name="arrow-right" size={18} color={COLORS.muted55} />
               </Pressable>
             ))}
           </View>
         )}
 
+        {/* ── Catalog ───────────────────────────────────────────────── */}
         <View style={styles.section}>
           <Label style={styles.sectionLabel}>
             {showRecentVices || showRecentQueries ? 'Browse' : 'All vices'}
@@ -247,11 +364,7 @@ export default function VicesTab() {
                   <Text style={styles.rowLabel}>Search "{trimmed}"</Text>
                   <Text style={styles.rowSubLabel}>No matches — search anyway</Text>
                 </View>
-                <MaterialCommunityIcons
-                  name="arrow-right"
-                  size={20}
-                  color={COLORS.muted55}
-                />
+                <MaterialCommunityIcons name="arrow-right" size={20} color={COLORS.muted55} />
               </Pressable>
             </View>
           ) : (
@@ -275,6 +388,8 @@ export default function VicesTab() {
     </SafeAreaView>
   );
 }
+
+// ─── ViceRow ──────────────────────────────────────────────────────────────────
 
 function ViceRow({
   vice,
@@ -303,14 +418,12 @@ function ViceRow({
             color={COLORS.gold}
           />
         </View>
-        <Text style={styles.rowLabel} numberOfLines={1}>
-          {vice.label}
-        </Text>
+        <Text style={styles.rowLabel} numberOfLines={1}>{vice.label}</Text>
         <Pressable
           onPress={onToggleFavorite}
-          hitSlop={10}
+          hitSlop={12}
           accessibilityRole="button"
-          accessibilityLabel={favorited ? 'Remove from favorites' : 'Save vice to favorites'}
+          accessibilityLabel={favorited ? 'Remove from favourites' : 'Save vice to favourites'}
           accessibilityState={{ selected: favorited }}
           style={({ pressed }) => [styles.heartBtn, pressed && { opacity: 0.6 }]}
         >
@@ -320,52 +433,65 @@ function ViceRow({
             color={favorited ? COLORS.gold : COLORS.muted55}
           />
         </Pressable>
-        <MaterialCommunityIcons name="chevron-right" size={20} color={COLORS.muted55} />
+        <MaterialCommunityIcons name="chevron-right" size={20} color={COLORS.muted40} />
       </Pressable>
     </View>
   );
 }
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: COLORS.bg,
   },
-  scroll: {
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.sm,
-    paddingBottom: SPACING.xxl,
-  },
+
+  // Fixed header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: COLORS.border06,
   },
   headerSpacer: {
-    width: 48,
+    width: MIN_TOUCH,
   },
   helpBtn: {
-    width: 48,
+    width: MIN_TOUCH,
+    height: MIN_TOUCH,
     alignItems: 'flex-end',
     justifyContent: 'center',
-    minHeight: 36,
   },
   helpText: {
     color: COLORS.gold,
     fontFamily: TYPOGRAPHY.fontFamilyMedium,
     fontSize: 14,
   },
+
+  // Scroll
+  scroll: {
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.xxl,
+  },
+
+  // Hero section — large top padding pushes title/search toward center
+  hero: {
+    paddingTop: SPACING.xxxl + SPACING.xl,
+    paddingBottom: SPACING.xl,
+  },
   heading: {
     color: COLORS.fg,
-    fontFamily: TYPOGRAPHY.fontFamilySemiBold,
-    fontSize: 30,
-    lineHeight: 36,
-    letterSpacing: -0.6,
-    marginTop: SPACING.sm,
+    fontFamily: TYPOGRAPHY.fontFamilyDisplay,
+    letterSpacing: -0.5,
+    textAlign: 'center',
+    marginBottom: SPACING.xl,
+    paddingBottom: SPACING.xs,
   },
   searchBar: {
-    marginTop: SPACING.lg,
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
@@ -374,42 +500,44 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: RADIUS.md,
     paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
-    minHeight: 52,
+    minHeight: 54,
   },
   searchInput: {
     flex: 1,
     color: COLORS.fg,
     fontFamily: TYPOGRAPHY.fontFamily,
     fontSize: 16,
-    paddingVertical: 0,
+    paddingVertical: SPACING.md,
   },
   tip: {
-    color: COLORS.muted55,
+    color: COLORS.muted40,
     fontFamily: TYPOGRAPHY.fontFamily,
     fontSize: 12,
     lineHeight: 17,
     marginTop: SPACING.sm,
-    marginLeft: SPACING.xs,
+    marginLeft: 2,
     letterSpacing: 0.1,
   },
   pillsWrap: {
     marginTop: SPACING.md,
-    marginBottom: SPACING.xl,
   },
+
+  // Sections
   section: {
     marginBottom: SPACING.lg,
   },
   sectionLabel: {
     marginBottom: SPACING.md,
-    marginLeft: SPACING.xs,
+    marginLeft: 2,
   },
+
+  // Vice card
   cardOuter: {
     backgroundColor: COLORS.card,
     borderColor: COLORS.border10,
     borderWidth: 1,
     borderRadius: RADIUS.md,
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.sm,
     overflow: 'hidden',
   },
   cardPress: {
@@ -417,21 +545,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: SPACING.md,
     paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.lg,
-    minHeight: 76,
+    paddingVertical: SPACING.md,
+    minHeight: 72,
   },
   emptyRow: {
     borderStyle: 'dashed',
   },
   iconBox: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     borderRadius: RADIUS.sm,
     backgroundColor: COLORS.accentDim,
     borderColor: COLORS.accentBorder,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   rowLabel: {
     flex: 1,
@@ -441,19 +570,20 @@ const styles = StyleSheet.create({
     letterSpacing: -0.1,
   },
   rowSubLabel: {
-    color: COLORS.muted70,
+    color: COLORS.muted55,
     fontFamily: TYPOGRAPHY.fontFamily,
     fontSize: 12,
     marginTop: 2,
     letterSpacing: 0.2,
   },
   heartBtn: {
-    width: 36,
-    height: 36,
+    width: MIN_TOUCH,
+    height: MIN_TOUCH,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 2,
   },
+
+  // Recent query row
   queryRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -465,15 +595,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
     marginBottom: SPACING.sm,
-    minHeight: 56,
+    minHeight: 60,
   },
   queryIcon: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
     borderRadius: RADIUS.sm,
     backgroundColor: COLORS.surface,
+    borderColor: COLORS.border10,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   queryText: {
     flex: 1,

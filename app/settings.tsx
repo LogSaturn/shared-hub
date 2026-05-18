@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -26,9 +27,9 @@ import {
   isUsernameAvailable,
   type Profile,
 } from '../lib/profile';
-import { updateEmail, updatePassword } from '../lib/auth';
-import { useSession } from '../hooks';
+import { updateEmail, updatePassword, deleteAccount } from '../lib/auth';
 import { useAppStore } from '../store';
+import { useSession } from '../hooks';
 
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
 
@@ -322,6 +323,31 @@ export default function Settings() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
   }
 
+  async function handleDeleteAccount() {
+    Alert.alert(
+      'Delete account',
+      'This permanently deletes your profile, vice logs, favourites, and search history. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setBusy(true);
+            const r = await deleteAccount();
+            setBusy(false);
+            if (!r.ok) {
+              Alert.alert('Could not delete account', r.error);
+              return;
+            }
+            useAppStore.getState().reset();
+            router.replace('/');
+          },
+        },
+      ],
+    );
+  }
+
   async function saveUnits(u: 'mi' | 'km') {
     Haptics.selectionAsync().catch(() => {});
     setUnitsStore(u);
@@ -379,6 +405,29 @@ export default function Settings() {
             last
           />
         </SettingSection>
+
+        <SettingSection title="Legal">
+          <SettingRow
+            label="Privacy Policy"
+            onPress={() => Linking.openURL('https://sirhobby.github.io/vice-privacy/')}
+          />
+          <SettingRow
+            label="Terms of Service"
+            onPress={() => Linking.openURL('https://sirhobby.github.io/vice-privacy/terms.html')}
+            last
+          />
+        </SettingSection>
+
+        <TouchableOpacity
+          onPress={handleDeleteAccount}
+          disabled={busy}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Delete account"
+          style={styles.deleteBtn}
+        >
+          <Text style={styles.deleteBtnText}>Delete Account</Text>
+        </TouchableOpacity>
       </ScrollView>
 
       {/* Display name modal */}
@@ -755,5 +804,17 @@ const styles = StyleSheet.create({
     fontFamily: TYPOGRAPHY.fontFamily,
     fontSize: 13,
     marginTop: SPACING.sm,
+  },
+  deleteBtn: {
+    marginTop: SPACING.sm,
+    paddingVertical: SPACING.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+  },
+  deleteBtnText: {
+    color: COLORS.accent,
+    fontFamily: TYPOGRAPHY.fontFamilyMedium,
+    fontSize: 14,
   },
 });

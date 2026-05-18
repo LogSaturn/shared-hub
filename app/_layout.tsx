@@ -1,5 +1,12 @@
 import '../global.css';
+import * as Sentry from '@sentry/react-native';
 import { useEffect } from 'react';
+
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+  enabled: !__DEV__,
+  tracesSampleRate: 0.2,
+});
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -14,6 +21,9 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
+import {
+  PlayfairDisplay_500Medium_Italic,
+} from '@expo-google-fonts/playfair-display';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { exchangeCodeForSession } from '../lib/auth';
 import { useSessionSync } from '../hooks/useSessionSync';
@@ -22,12 +32,13 @@ SplashScreen.preventAutoHideAsync().catch(() => {
   // already prevented or unavailable — ignore
 });
 
-export default function RootLayout() {
+function RootLayout() {
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    PlayfairDisplay_500Medium_Italic,
     // Vector-icons v15 lazy-loads. Under New Architecture in Expo Go the
     // icon font isn't auto-registered when an icon is first rendered, so
     // glyphs come out as tofu boxes. Preload it here explicitly.
@@ -60,6 +71,7 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
+    <Sentry.TouchEventBoundary>
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <BottomSheetModalProvider>
@@ -77,5 +89,8 @@ export default function RootLayout() {
         </BottomSheetModalProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
+    </Sentry.TouchEventBoundary>
   );
 }
+
+export default Sentry.wrap(RootLayout);

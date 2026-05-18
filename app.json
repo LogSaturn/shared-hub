@@ -42,6 +42,14 @@
       "expo-font",
       "expo-updates",
       [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "vice",
+          "organization": "logsaturn"
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "Vice needs photo library access to update your profile picture.",
@@ -61,6 +69,7 @@
         "projectId": "07f1038b-528c-4d19-b078-3418f3732620"
       }
     },
-    "owner": "sirhobbys-organization"
+    "owner": "sirhobbys-organization",
+    "privacyPolicyUrl": "https://sirhobby.github.io/vice-privacy/"
   }
 }

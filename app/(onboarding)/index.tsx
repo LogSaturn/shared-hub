@@ -19,6 +19,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Linking from 'expo-linking';
 import { COLORS, TYPOGRAPHY, SPACING, RADIUS } from '../../constants';
 import { edgeHorizontal } from '../../constants/layout';
 import { ViceNeedle } from '../../components/compass';
@@ -461,6 +462,23 @@ export default function OnboardingPager() {
               </View>
             ))}
           </View>
+          <Text style={styles.dataDisclosure}>
+            {'Vice also stores your account info, vice logs, search history, and favourites to power your profile. By continuing you agree to our '}
+            <Text
+              style={styles.dataDisclosureLink}
+              onPress={() => Linking.openURL('https://sirhobby.github.io/vice-privacy/terms.html')}
+            >
+              Terms of Service
+            </Text>
+            {' and '}
+            <Text
+              style={styles.dataDisclosureLink}
+              onPress={() => Linking.openURL('https://sirhobby.github.io/vice-privacy/')}
+            >
+              Privacy Policy
+            </Text>
+            .
+          </Text>
         </View>
       </ScrollView>
 
@@ -680,6 +698,18 @@ const styles = StyleSheet.create({
     fontFamily: TYPOGRAPHY.fontFamilySemiBold,
     fontSize: 16,
     letterSpacing: 0.2,
+  },
+  dataDisclosure: {
+    color: COLORS.muted55,
+    fontFamily: TYPOGRAPHY.fontFamily,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: SPACING.xl,
+  },
+  dataDisclosureLink: {
+    color: COLORS.gold,
+    fontFamily: TYPOGRAPHY.fontFamilyMedium,
+    fontSize: 12,
   },
   // ── Age gate modal ──
   ageRoot: {
