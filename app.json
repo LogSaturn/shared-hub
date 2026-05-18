@@ -48,6 +48,7 @@
           "project": "vice",
           "organization": "logsaturn",
           "experimental_android": {
+            "enableAndroidGradlePlugin": false,
             "autoUploadProguardMapping": false,
             "autoUploadNativeSymbols": false,
             "uploadNativeSymbols": false
