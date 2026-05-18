@@ -46,7 +46,12 @@
         {
           "url": "https://sentry.io/",
           "project": "vice",
-          "organization": "logsaturn"
+          "organization": "logsaturn",
+          "experimental_android": {
+            "autoUploadProguardMapping": false,
+            "autoUploadNativeSymbols": false,
+            "uploadNativeSymbols": false
+          }
         }
       ],
       [
