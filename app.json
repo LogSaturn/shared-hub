@@ -42,20 +42,6 @@
       "expo-font",
       "expo-updates",
       [
-        "@sentry/react-native/expo",
-        {
-          "url": "https://sentry.io/",
-          "project": "vice",
-          "organization": "logsaturn",
-          "experimental_android": {
-            "enableAndroidGradlePlugin": false,
-            "autoUploadProguardMapping": false,
-            "autoUploadNativeSymbols": false,
-            "uploadNativeSymbols": false
-          }
-        }
-      ],
-      [
         "expo-image-picker",
         {
           "photosPermission": "Vice needs photo library access to update your profile picture.",
