@@ -1,9 +1,43 @@
 VICE APP — BUILD PROGRESS
-Last updated: 2026-05-17
-Current phase: Store compliance audit + hardening — IN PROGRESS
+Last updated: 2026-05-18
+Current phase: Store compliance + UI polish — SHIPPED. Next: store submission.
 
 PICK UP HERE NEXT SESSION
 ─────────────────────────
+This round (2026-05-18) shipped:
+  • App icon updated: new gold V logo (unclipped, 1024×1024 sRGB) for both
+    icon.png and adaptive-icon.png. legal/ emails replaced with web@fintdigital.com.
+  • Rotating Playfair Display italic titles on Vices tab: 30 titles (15 anon,
+    15 personalised). Per-title font sizing system — sizeForTitle() measures the
+    longest line and maps to a 5-tier scale (66/58/52/46/40px) so every title
+    breaks at natural reading points without overflow. Centered text alignment.
+  • display_name personalisation: titles use display_name first, username fallback.
+  • Splash preload: useSessionSync now prefetches profile in parallel with recent
+    vice IDs. cachedProfile + profileReady added to Zustand store. Custom splash
+    (app/index.tsx) gates navigation on profileReady — tabs render instantly with
+    username in title, no flash.
+  • FiltersSheet: big gold "Save Filters" button (height 58, check icon) appears
+    only when filters are dirty; "Done" text link when clean.
+  • ViceNeedle logo in Vices tab header; ViceNeedle accent prop fix (was hardcoded).
+  • Sentry config plugin removed from app.json (was breaking Android Gradle build).
+    JS SDK (Sentry.init) remains active for runtime JS error capture. Native crash
+    symbolication deferred until SENTRY_AUTH_TOKEN is added to EAS secrets.
+  • Preview APK built and distributed via EAS:
+    https://expo.dev/accounts/sirhobbys-organization/projects/vices/builds/21b2b588-f185-4d8a-9ee1-cec1cbdc5096
+  • tsc clean throughout.
+
+  Outstanding / next:
+  1. HaveIBeenPwned — requires Supabase Pro plan, skip for now.
+  2. ✅ Branded assets (updated icon 2026-05-18)
+  3. ✅ Privacy policy / ToS (email updated to web@fintdigital.com)
+  4. Age rating questionnaire — blocked on Apple Dev ($99) + Google Play ($25) enrollment.
+  5. Sentry DSN: create project at sentry.io → copy DSN → add EXPO_PUBLIC_SENTRY_DSN
+     to EAS env (preview + production). Also add SENTRY_AUTH_TOKEN to EAS secrets
+     then re-add @sentry/react-native/expo plugin to app.json for native symbolication.
+  6. Stress tests: edge function rate-limit burst (35 req/60s), bundle size baseline.
+  7. Real-device verification: onboarding + avatar upload (Android + iOS).
+  8. Store submission: Apple App Privacy Details + Google Data Safety form.
+
 This round (2026-05-17) shipped:
   • Branded assets: icon.png (1024x1024 RGB, no alpha), splash-icon.png
     (1284x2778), adaptive-icon.png replaced with gold V on #1c1713 background.

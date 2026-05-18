@@ -44,14 +44,15 @@ npm test             # jest (48 tests)
 
 ### Required env vars
 
-`.env.local` (gitignored) must contain:
+`.env` (gitignored) must contain:
 
 ```
 EXPO_PUBLIC_SUPABASE_URL=https://wuxdtsoihfcrtuxorzfz.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=...
+EXPO_PUBLIC_SENTRY_DSN=          # get from sentry.io → project → Client Keys
 ```
 
-For EAS builds, the same vars are stored as EAS project env (production + preview + development scope).
+For EAS builds, `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` are stored as EAS project env (preview + production). Add `EXPO_PUBLIC_SENTRY_DSN` there too once the Sentry project is created.
 
 ---
 
@@ -143,7 +144,8 @@ lib/
   savedSearches.ts    list/add/remove/touch/rename/reorder (scaffold; no UI yet)
   viceSearches.ts     log + recent + stats
 store/                Zustand store — activeSearch, pendingFilters, lastUsedFilters,
-                      recentViceIds, recentCustomQueries, units (persisted subset)
+                      recentViceIds, recentCustomQueries, units (persisted subset),
+                      cachedProfile + profileReady (splash preload)
 types/                domain types (includes types/search.ts — SearchConfig/SearchFilters)
 supabase/functions/   places-proxy edge function (Deno)
 ```
@@ -168,5 +170,8 @@ See `progress.txt` for the full phase list — also has a "PICK UP HERE NEXT SES
 - Phase 9 — Hardening + store audit prep (in progress: RLS optimized, awaiting assets/privacy policy/age rating)
 - Phase 10 ✅ — UI audit / fixes; settings screen; username/avatar display
 - Phase 11 ✅ — Onboarding flow (4 slides); Log a Vice feature; vice history chart
-- Phase 12 — Play Store + App Store submission
-- Phase 13 — Ads + paywall
+- Phase 12 ✅ — Store compliance (account deletion, privacy policy, ToS, Sentry);
+                 UI audit; rotating Playfair Display titles with per-title sizing;
+                 splash preload; updated app icon; preview APK shipped
+- Phase 13 — Play Store + App Store submission
+- Phase 14 — Ads + paywall
