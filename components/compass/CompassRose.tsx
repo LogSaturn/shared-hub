@@ -25,7 +25,7 @@ const LABELS: { text: string; bearing: number }[] = [
   { text: 'W', bearing: 270 },
 ];
 
-const LABEL_BOX = 22;
+const LABEL_BOX = 26;
 
 export function CompassRose({
   size = 280,
@@ -73,7 +73,7 @@ export function CompassRose({
           needleStyle,
         ]}
       >
-        <ViceNeedle size={size * 0.5} variant={variant} accent={accent} />
+        <ViceNeedle size={size * 0.68} variant={variant} accent={accent} />
       </Animated.View>
     </View>
   );
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   labelText: {
     color: COLORS.muted35,
     fontFamily: TYPOGRAPHY.fontFamilySemiBold,
-    fontSize: 12,
+    fontSize: 14,
     letterSpacing: 1.6,
   },
 });

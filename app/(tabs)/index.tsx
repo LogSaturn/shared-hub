@@ -478,10 +478,10 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xxl,
   },
 
-  // Hero section — large top padding pushes title/search toward center
+  // Hero section — modest top padding keeps title/search in the upper third
   hero: {
-    paddingTop: SPACING.xxxl + SPACING.xl,
-    paddingBottom: SPACING.xl,
+    paddingTop: SPACING.xl,
+    paddingBottom: SPACING.xxl,
   },
   heading: {
     color: COLORS.fg,
