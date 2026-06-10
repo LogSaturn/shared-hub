@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Vice",
+    "name": "Vices",
     "slug": "vices",
     "scheme": "vice",
     "version": "1.0.0",
@@ -14,15 +14,15 @@
       "backgroundColor": "#1c1713"
     },
     "ios": {
-      "bundleIdentifier": "com.logsaturn.vice",
+      "bundleIdentifier": "com.fintdigital.vices",
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Vice uses your location to point you toward the nearest place to satisfy your vice.",
-        "NSMotionUsageDescription": "Vice uses motion sensors to power the live compass needle."
+        "NSLocationWhenInUseUsageDescription": "Vices uses your location to point you toward the nearest place to satisfy your vice.",
+        "NSMotionUsageDescription": "Vices uses motion sensors to power the live compass needle."
       }
     },
     "android": {
-      "package": "com.logsaturn.vice",
+      "package": "com.fintdigital.vices",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1c1713"
@@ -33,19 +33,43 @@
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
         "CAMERA",
-        "READ_MEDIA_IMAGES",
-        "READ_EXTERNAL_STORAGE"
+        "READ_MEDIA_IMAGES"
       ]
     },
     "plugins": [
       "expo-router",
       "expo-font",
       "expo-updates",
+      "expo-dev-client",
       [
         "expo-image-picker",
         {
-          "photosPermission": "Vice needs photo library access to update your profile picture.",
-          "cameraPermission": "Vice needs camera access to take a profile picture."
+          "photosPermission": "Vices needs photo library access to update your profile picture.",
+          "cameraPermission": "Vices needs camera access to take a profile picture."
+        }
+      ],
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "Compass",
+              "label": "Vices Compass",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "description": "Mini compass pointing to your nearest vice",
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 1800000
+            },
+            {
+              "name": "QuickVice",
+              "label": "Quick Vice",
+              "minWidth": "40dp",
+              "minHeight": "40dp",
+              "description": "Tap to open your favorite vice",
+              "resizeMode": "none"
+            }
+          ]
         }
       ]
     ],

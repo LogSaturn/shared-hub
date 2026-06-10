@@ -27,6 +27,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { exchangeCodeForSession } from '../lib/auth';
 import { useSessionSync } from '../hooks/useSessionSync';
+import { useWidgetForegroundRefresh } from '../widgets/useWidgetForegroundRefresh';
 
 SplashScreen.preventAutoHideAsync().catch(() => {
   // already prevented or unavailable — ignore
@@ -46,6 +47,7 @@ function RootLayout() {
   });
 
   useSessionSync();
+  useWidgetForegroundRefresh();
 
   useEffect(() => {
     if (fontsLoaded) {
@@ -84,6 +86,8 @@ function RootLayout() {
             <Stack.Screen name="compass" />
             <Stack.Screen name="favorites" />
             <Stack.Screen name="settings" />
+            <Stack.Screen name="vice/[id]" />
+            <Stack.Screen name="widget-setup/[name]" options={{ animation: 'slide_from_bottom' }} />
             <Stack.Screen name="(auth)" />
           </Stack>
         </BottomSheetModalProvider>
